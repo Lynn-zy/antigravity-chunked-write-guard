@@ -1,29 +1,29 @@
 # Chunked Write Guard
 
-一款零依赖的 **Antigravity** 插件，用于防止模型在单次 `write_file` / `edit_file` 中生成超大文本触发流式超时（`The stream was interrupted`）并陷入“零进度重试死循环”。
+零依赖的 Antigravity 插件，用于避免单次 `write_file` 或 `edit_file` 输出过长触发流式超时（`The stream was interrupted`）并反复零进度重试。
 
 ## 解决什么问题
 
-当模型试图在一次 `write_file` 里一口气输出上千行单页原型、大型组件或长文档时，很容易在参数流式生成中途耗满约 10 分钟连接超时而断流。因为工具调用未闭合，磁盘上不会落盘任何内容，重试或发送 `continue` 后又会从头生成同一份巨型文件，反复超时。
+当模型试图在一次 `write_file` 里直接生成上千行单页原型、大型组件或长文档时，很容易在参数流式输出中途达到约 10 分钟连接超时而断流。因为工具调用没有闭合，磁盘上不会写入任何内容。系统自动重试或用户发送 `continue` 后，模型又会从头生成同一份文件，再次超时。
 
-本插件通过三层配合打破这一问题：
+本插件由四个部分配合处理这一问题：
 
-1. **事前约束（Rules）**：常驻规则 `rules/AGENTS.md` 约定单次写入目标，引导模型对长文件采用“先写骨架、再分次 `Append` / `edit_file` 补齐”。
-2. **断流自愈（`PreInvocation` Hook）**：仅在检测到 `transcript.jsonl` 尾部刚出现未恢复的 `stream was interrupted` / 流超时记录时注入一次分段续写提醒（带去重标记）；正常对话返回 `{}`，不污染上下文、不破坏 Prompt Cache。
-3. **高阈值兜底（`PreToolUse` Hook）**：匹配 `write_file|edit_file`，拦截超过硬兜底线的巨型单次写入或全量覆盖式替换，并返回可执行的拆分指引；纯删除旧代码（`Replacement` 为空）直接放行；脚本异常自动 `fail-open` 放行。
-4. **侧边栏三档面板（Sidecar UI）**：内置 **Write Guard** 侧边栏面板，可在 `700` / `500`（默认）/ `300` 三档之间一键切换——Hook 阈值即时生效，`rules/AGENTS.md` 同步更新。
+1. **常驻规则（`rules/AGENTS.md`）**：约定单次写入目标。长文件先写骨架，再通过多次 `write_file(Append: true)` 或 `edit_file` 按模块补齐。
+2. **断流恢复（`PreInvocation` Hook）**：扫描 `transcript.jsonl` 尾部。仅在上一轮出现未恢复的 `stream was interrupted` 或流超时记录时注入一次续写提醒，并附带去重标记。正常对话直接返回 `{}`，不增加上下文，不影响 Prompt Cache。
+3. **超大写入拦截（`PreToolUse` Hook）**：匹配 `write_file|edit_file`，拦截超过单次写入上限的写入和超过合计上限的全量替换，并返回拆分建议。纯删除旧代码（`Replacement` 为空）直接放行，脚本异常时自动 `fail-open` 放行。
+4. **侧边栏切换面板（Sidecar UI）**：内置 Write Guard 侧边栏面板，可在 `700`、`500`（默认）、`300` 三档间切换。切换后 Hook 阈值立即生效，`rules/AGENTS.md` 同步重写。
 
 ## 三档阈值
 
-| 档位 | 规则目标（`AGENTS.md`） | `PreToolUse` 单次兜底线 | `edit_file` 双向合计上限（`Target + Replacement`） | 断流自愈强制上限 |
+| 档位 | 单次写入目标（`AGENTS.md`） | 单次写入上限（`PreToolUse`） | `edit_file` 合计上限（`Target + Replacement`） | 断流恢复上限 |
 | :--- | :---: | :---: | :---: | :---: |
-| **700 行 · 宽松档** | ≤ 700 行 | 1100 行 / 64 KB | 1200 行 / 72 KB | ≤ 400 行 |
+| 700 行 · 宽松档 | ≤ 700 行 | 1100 行 / 64 KB | 1200 行 / 72 KB | ≤ 400 行 |
 | **500 行 · 标准档（默认）** | **≤ 500 行** | **800 行 / 48 KB** | **900 行 / 56 KB** | **≤ 300 行** |
-| **300 行 · 稳妥档** | ≤ 300 行 | 500 行 / 28 KB | 600 行 / 36 KB | ≤ 200 行 |
+| 300 行 · 稳妥档 | ≤ 300 行 | 500 行 / 28 KB | 600 行 / 36 KB | ≤ 200 行 |
 
 ## 安装
 
-前置要求：本机已安装 **Node.js >= 20** 与 **Antigravity**。
+本机需先安装 Node.js >= 20 与 Antigravity。
 
 ### Windows (PowerShell)
 
@@ -41,7 +41,7 @@ cd antigravity-chunked-write-guard
 bash ./scripts/install.sh
 ```
 
-脚本会将插件安装到 `~/.gemini/config/plugins/chunked-write-guard`（升级时自动保留你通过面板保存的 `config/active-preset.json` 档位偏好，且不修改 Antigravity 的 `config.json`）。安装后 Antigravity 会自动发现并启用该插件，可在侧边栏打开 **Write Guard** 面板切换档位。
+安装脚本将插件复制到 `~/.gemini/config/plugins/chunked-write-guard`，不改动 Antigravity 的 `config.json`。再次运行脚本升级时，会保留 `config/active-preset.json` 中已选的档位并同步更新 `rules/AGENTS.md`。安装完成后 Antigravity 会自动发现并启用插件，在侧边栏打开 Write Guard 面板即可切换档位。
 
 ### 卸载
 
@@ -58,21 +58,21 @@ bash ./scripts/install.sh --uninstall
 ```text
 .
 ├── plugin.json                  # Antigravity 插件清单
-├── hooks.json                   # PreInvocation + PreToolUse Hook 声明
+├── hooks.json                   # PreInvocation 与 PreToolUse Hook 声明
 ├── assets/logo.svg              # 插件图标
 ├── rules/AGENTS.md              # 常驻分段写入规范（与当前档位同步）
 ├── scripts/
-│   ├── presets.mjs              # 三档配置单一数据源与规则渲染
-│   ├── hook-core.mjs            # 阈值判定与断流检测核心逻辑
+│   ├── presets.mjs              # 三档配置与规则渲染
+│   ├── hook-core.mjs            # 阈值判定与断流检测逻辑
 │   ├── write-guard-hook.mjs     # Hook CLI 入口（fail-open）
-│   ├── hook-core.test.mjs       # Node 原生单元测试
-│   ├── install.ps1              # Windows 安装 / 同步 / 卸载脚本
-│   └── install.sh               # macOS / Linux 安装 / 同步 / 卸载脚本
+│   ├── hook-core.test.mjs       # Node 单元测试
+│   ├── install.ps1              # Windows 安装与卸载脚本
+│   └── install.sh               # macOS / Linux 安装与卸载脚本
 └── sidecars/panel/
     ├── sidecar.json             # 侧边栏 Sidecar 面板声明
     ├── main.mjs                 # Sidecar HTTP 服务入口
     ├── panel-logic.mjs          # 面板状态查询与档位切换逻辑
-    └── index.html               # 侧边栏 Web UI（自适应宿主主题）
+    └── index.html               # 侧边栏面板页面（自适应宿主主题）
 ```
 
 ## 本地测试
