@@ -1,0 +1,8 @@
+# 运行期用户选择的档位状态（未配置时默认回退 500 档）
+config/active-preset.json
+*.tmp
+
+# 常规依赖与系统垃圾文件
+node_modules/
+.DS_Store
+Thumbs.db
