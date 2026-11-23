@@ -36,10 +36,10 @@ export const buildPanelState = (options = {}) => {
 };
 
 /**
- * 校验面板提交的档位切换请求，并同步更新配置与规则文件。
+ * 校验面板提交的档位切换请求，档位有变化时同步更新配置与规则文件。
  * @param {Record<string, unknown>} body - 客户端提交的 JSON 对象
  * @param {{ configPath?: string, rulesPath?: string }} [options] - 可选路径覆盖
- * @returns {{ ok: true, state: Record<string, unknown> } | { ok: false, status: number, error: string }} 执行结果
+ * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> } | { ok: false, status: number, error: string }} 执行结果
  */
 export const handleSetPreset = (body, options = {}) => {
   const presetId = String(body?.presetId ?? '').trim();
@@ -51,9 +51,20 @@ export const handleSetPreset = (body, options = {}) => {
     };
   }
 
+  const current = readActivePresetState({ configPath: options.configPath });
+  // 目标档位已持久化生效时跳过写盘，避免触发无意义的规则文件重载
+  if (current.presetId === presetId && current.updatedAt !== null) {
+    return {
+      ok: true,
+      changed: false,
+      state: buildPanelState(options),
+    };
+  }
+
   applyPreset(presetId, options);
   return {
     ok: true,
+    changed: true,
     state: buildPanelState(options),
   };
 };

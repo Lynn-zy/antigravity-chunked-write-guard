@@ -192,6 +192,25 @@ test('panel-logic rejects invalid presetId and exposes presets in 700/500/300 or
     assert.equal(invalid.ok, false);
     assert.equal(invalid.status, 400);
     assert.equal(readActivePresetState({ configPath: ws.configPath }).presetId, '500');
+
+    // 首次切换落盘，再次提交同一档位应短路跳过磁盘写入
+    const first = handleSetPreset(
+      { presetId: '300' },
+      { configPath: ws.configPath, rulesPath: ws.rulesPath },
+    );
+    assert.equal(first.ok, true);
+    assert.equal(first.changed, true);
+    const firstUpdatedAt = first.state.updatedAt;
+    const firstMtime = fs.statSync(ws.rulesPath).mtimeMs;
+
+    const repeat = handleSetPreset(
+      { presetId: '300' },
+      { configPath: ws.configPath, rulesPath: ws.rulesPath },
+    );
+    assert.equal(repeat.ok, true);
+    assert.equal(repeat.changed, false);
+    assert.equal(repeat.state.updatedAt, firstUpdatedAt);
+    assert.equal(fs.statSync(ws.rulesPath).mtimeMs, firstMtime);
   } finally {
     ws.cleanup();
   }

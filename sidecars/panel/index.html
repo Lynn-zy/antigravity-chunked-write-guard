@@ -121,11 +121,12 @@
       border-color: color-mix(in srgb, var(--wg-accent) 40%, transparent);
     }
 
-    .preset-card:active {
+    .preset-card:active:not([aria-pressed="true"]) {
       transform: scale(0.994);
     }
 
     .preset-card[aria-pressed="true"] {
+      cursor: default;
       border-color: color-mix(in srgb, var(--wg-accent) 75%, var(--wg-border));
       background: color-mix(in srgb, var(--wg-accent) 8%, var(--wg-card));
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wg-accent) 18%, transparent);
@@ -263,6 +264,7 @@
       const statusMsgEl = document.getElementById('statusMsg');
       const statusMetaEl = document.getElementById('statusMeta');
       let busy = false;
+      let activePresetId = '';
 
       const apiFetch = (url, options = {}) => {
         if (window.sidecar && typeof window.sidecar.fetch === 'function') {
@@ -284,6 +286,7 @@
       };
 
       const render = (state) => {
+        activePresetId = state.presetId;
         badgeEl.textContent = `当前：${state.presetId} 行档`;
         statusMetaEl.textContent = `${formatTime(state.updatedAt)} · Hook 即时生效，规则已同步`;
 
@@ -338,7 +341,7 @@
       };
 
       const switchPreset = async (presetId) => {
-        if (busy) return;
+        if (busy || presetId === activePresetId) return;
         busy = true;
         setStatus(`正在切换至 ${presetId} 行档…`, '');
         for (const btn of listEl.querySelectorAll('button')) btn.disabled = true;
