@@ -5,6 +5,10 @@ import {
   applyPreset,
   readActivePresetState,
 } from '../../scripts/presets.mjs';
+import {
+  readTriggerStats,
+  resetTriggerStats,
+} from '../../scripts/stats.mjs';
 
 const formatPresetSummary = (preset) => ({
   id: preset.id,
@@ -19,8 +23,8 @@ const formatPresetSummary = (preset) => ({
 });
 
 /**
- * 构建侧边栏面板所需的状态快照。
- * @param {{ configPath?: string }} [options] - 可选配置文件路径覆盖
+ * 构建侧边栏面板所需的状态与触发统计快照。
+ * @param {{ configPath?: string, eventsPath?: string }} [options] - 可选路径覆盖
  * @returns {Record<string, unknown>} 面板展示状态 JSON
  */
 export const buildPanelState = (options = {}) => {
@@ -32,13 +36,14 @@ export const buildPanelState = (options = {}) => {
     updatedAt: active.updatedAt,
     active: formatPresetSummary(active.config),
     presets: PRESET_ORDER.map((id) => formatPresetSummary(PRESETS[id])),
+    stats: readTriggerStats({ eventsPath: options.eventsPath }),
   };
 };
 
 /**
  * 校验面板提交的档位切换请求，档位有变化时同步更新配置与规则文件。
  * @param {Record<string, unknown>} body - 客户端提交的 JSON 对象
- * @param {{ configPath?: string, rulesPath?: string }} [options] - 可选路径覆盖
+ * @param {{ configPath?: string, rulesPath?: string, eventsPath?: string }} [options] - 可选路径覆盖
  * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> } | { ok: false, status: number, error: string }} 执行结果
  */
 export const handleSetPreset = (body, options = {}) => {
@@ -62,6 +67,29 @@ export const handleSetPreset = (body, options = {}) => {
   }
 
   applyPreset(presetId, options);
+  return {
+    ok: true,
+    changed: true,
+    state: buildPanelState(options),
+  };
+};
+
+/**
+ * 清零触发统计日志并返回最新面板状态。
+ * @param {{ configPath?: string, eventsPath?: string }} [options] - 可选路径覆盖
+ * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> }} 执行结果
+ */
+export const handleResetStats = (options = {}) => {
+  const current = readTriggerStats({ eventsPath: options.eventsPath });
+  if (current.denyCount === 0 && current.recoveryCount === 0 && current.lastTriggeredAt === null) {
+    return {
+      ok: true,
+      changed: false,
+      state: buildPanelState(options),
+    };
+  }
+
+  resetTriggerStats({ eventsPath: options.eventsPath });
   return {
     ok: true,
     changed: true,

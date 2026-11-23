@@ -21,7 +21,16 @@ import {
   readActivePresetState,
   renderAgentsRule,
 } from './presets.mjs';
-import { buildPanelState, handleSetPreset } from '../sidecars/panel/panel-logic.mjs';
+import {
+  recordTriggerEvent,
+  readTriggerStats,
+  resetTriggerStats,
+} from './stats.mjs';
+import {
+  buildPanelState,
+  handleResetStats,
+  handleSetPreset,
+} from '../sidecars/panel/panel-logic.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const HOOK_ENTRY = path.join(SCRIPT_DIR, 'write-guard-hook.mjs');
@@ -36,6 +45,7 @@ const createTempWorkspace = () => {
     configPath: path.join(tempDir, 'active-preset.json'),
     rulesPath: path.join(tempDir, 'AGENTS.md'),
     transcriptPath: path.join(tempDir, 'transcript.jsonl'),
+    eventsPath: path.join(tempDir, 'events.jsonl'),
     cleanup: () => fs.rmSync(tempDir, { recursive: true, force: true }),
   };
 };
@@ -331,23 +341,105 @@ test('renderAgentsRule includes consistent metrics for every preset', () => {
   }
 });
 
-test('CLI entrypoint executes end-to-end via stdin/stdout and fails open on invalid JSON', () => {
-  const denyRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
-    input: JSON.stringify({
-      toolCall: {
-        name: 'write_file',
-        args: { Path: '/tmp/big.html', Content: makeLines(1200) },
-      },
-    }),
-    encoding: 'utf8',
-  });
-  assert.equal(denyRun.status, 0);
-  assert.equal(JSON.parse(denyRun.stdout).decision, 'deny');
+test('stats module records deny/recovery events, skips corrupted lines, and resets cleanly', () => {
+  const ws = createTempWorkspace();
+  try {
+    assert.deepEqual(readTriggerStats({ eventsPath: ws.eventsPath }), {
+      denyCount: 0,
+      recoveryCount: 0,
+      lastTriggeredAt: null,
+    });
 
-  const malformedRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
-    input: '{invalid json',
-    encoding: 'utf8',
-  });
-  assert.equal(malformedRun.status, 0);
-  assert.deepEqual(JSON.parse(malformedRun.stdout), { decision: 'allow' });
+    assert.equal(recordTriggerEvent('unknown', { eventsPath: ws.eventsPath }), false);
+    assert.equal(
+      recordTriggerEvent('deny', { eventsPath: ws.eventsPath, timestamp: '2026-11-23T09:00:00.000Z' }),
+      true,
+    );
+    fs.appendFileSync(ws.eventsPath, '{corrupted json line\n', 'utf8');
+    assert.equal(
+      recordTriggerEvent('recovery', { eventsPath: ws.eventsPath, timestamp: '2026-11-23T09:05:00.000Z' }),
+      true,
+    );
+
+    assert.deepEqual(readTriggerStats({ eventsPath: ws.eventsPath }), {
+      denyCount: 1,
+      recoveryCount: 1,
+      lastTriggeredAt: '2026-11-23T09:05:00.000Z',
+    });
+
+    const resetOnce = handleResetStats({ configPath: ws.configPath, eventsPath: ws.eventsPath });
+    assert.equal(resetOnce.changed, true);
+    assert.deepEqual(resetOnce.state.stats, {
+      denyCount: 0,
+      recoveryCount: 0,
+      lastTriggeredAt: null,
+    });
+
+    const resetAgain = handleResetStats({ configPath: ws.configPath, eventsPath: ws.eventsPath });
+    assert.equal(resetAgain.changed, false);
+    resetTriggerStats({ eventsPath: ws.eventsPath });
+    assert.deepEqual(readTriggerStats({ eventsPath: ws.eventsPath }), {
+      denyCount: 0,
+      recoveryCount: 0,
+      lastTriggeredAt: null,
+    });
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test('CLI entrypoint records only deny/recovery events and fails open on invalid JSON', () => {
+  const ws = createTempWorkspace();
+  const env = { ...process.env, CHUNKED_WRITE_GUARD_EVENTS_PATH: ws.eventsPath };
+  try {
+    // 正常放行不写入统计日志
+    const allowRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
+      input: JSON.stringify({
+        toolCall: { name: 'write_file', args: { Path: '/tmp/small.js', Content: makeLines(10) } },
+      }),
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(allowRun.status, 0);
+    assert.equal(JSON.parse(allowRun.stdout).decision, 'allow');
+    assert.equal(fs.existsSync(ws.eventsPath), false);
+
+    // 超限拦截写入 1 条 deny
+    const denyRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
+      input: JSON.stringify({
+        toolCall: { name: 'write_file', args: { Path: '/tmp/big.html', Content: makeLines(1200) } },
+      }),
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(denyRun.status, 0);
+    assert.equal(JSON.parse(denyRun.stdout).decision, 'deny');
+
+    // 断流恢复写入 1 条 recovery
+    writeTranscript(ws.transcriptPath, [
+      { step_index: 1, type: 'ERROR_MESSAGE', content: 'Error: The stream was interrupted.' },
+    ]);
+    const recRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-invocation'], {
+      input: JSON.stringify({ transcriptPath: ws.transcriptPath }),
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(recRun.status, 0);
+    assert.equal(Array.isArray(JSON.parse(recRun.stdout).injectSteps), true);
+
+    const stats = readTriggerStats({ eventsPath: ws.eventsPath });
+    assert.equal(stats.denyCount, 1);
+    assert.equal(stats.recoveryCount, 1);
+    assert.equal(typeof stats.lastTriggeredAt, 'string');
+
+    const malformedRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
+      input: '{invalid json',
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(malformedRun.status, 0);
+    assert.deepEqual(JSON.parse(malformedRun.stdout), { decision: 'allow' });
+  } finally {
+    ws.cleanup();
+  }
 });

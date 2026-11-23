@@ -210,11 +210,67 @@
       color: var(--wg-muted);
     }
 
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid color-mix(in srgb, var(--wg-border) 75%, transparent);
+    }
+
+    .stats-counters {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .stat-item {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 5px;
+      color: var(--wg-muted);
+    }
+
+    .stat-num {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--wg-fg);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-num.nonzero {
+      color: var(--wg-accent);
+    }
+
+    .reset-btn {
+      padding: 2px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--wg-border);
+      background: transparent;
+      color: var(--wg-muted);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: color 140ms ease, border-color 140ms ease;
+    }
+
+    .reset-btn:hover:not(:disabled) {
+      color: var(--wg-fg);
+      border-color: color-mix(in srgb, var(--wg-fg) 35%, transparent);
+    }
+
+    .reset-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
     .status-row {
       display: flex;
       align-items: center;
       gap: 7px;
-      margin-bottom: 4px;
     }
 
     .status-dot {
@@ -229,8 +285,8 @@
     .status-dot.err { background: var(--wg-err); }
 
     .status-msg {
-      color: var(--wg-fg);
-      font-weight: 500;
+      color: var(--wg-muted);
+      font-size: 11.5px;
     }
 
     .status-msg.ok { color: var(--wg-ok); }
@@ -248,11 +304,17 @@
     <div id="presetList" class="preset-list" role="group" aria-label="写入阈值档位"></div>
 
     <div class="status-bar">
+      <div class="stats-row">
+        <div class="stats-counters">
+          <span class="stat-item">超限拦截 <strong id="denyCount" class="stat-num">0</strong></span>
+          <span class="stat-item">断流恢复 <strong id="recoveryCount" class="stat-num">0</strong></span>
+        </div>
+        <button id="resetStatsBtn" type="button" class="reset-btn" disabled>清零</button>
+      </div>
       <div class="status-row">
         <span id="statusDot" class="status-dot"></span>
         <span id="statusMsg" class="status-msg">正在读取当前配置…</span>
       </div>
-      <div id="statusMeta">Hook 拦截与断流恢复无需重启，AGENTS.md 规则在新会话或重载后更新。</div>
     </div>
   </main>
 
@@ -260,11 +322,16 @@
     (() => {
       const listEl = document.getElementById('presetList');
       const badgeEl = document.getElementById('activeBadge');
+      const denyCountEl = document.getElementById('denyCount');
+      const recoveryCountEl = document.getElementById('recoveryCount');
+      const resetStatsBtn = document.getElementById('resetStatsBtn');
       const statusDotEl = document.getElementById('statusDot');
       const statusMsgEl = document.getElementById('statusMsg');
-      const statusMetaEl = document.getElementById('statusMeta');
       let busy = false;
+      let loading = false;
       let activePresetId = '';
+      let lastStats = { denyCount: 0, recoveryCount: 0, lastTriggeredAt: null };
+      let statusKind = '';
 
       const apiFetch = (url, options = {}) => {
         if (window.sidecar && typeof window.sidecar.fetch === 'function') {
@@ -274,21 +341,37 @@
       };
 
       const setStatus = (text, kind = '') => {
+        statusKind = kind;
         statusMsgEl.textContent = text;
         statusMsgEl.className = kind ? `status-msg ${kind}` : 'status-msg';
         statusDotEl.className = kind ? `status-dot ${kind}` : 'status-dot';
       };
 
-      const formatTime = (iso) => {
-        if (!iso) return '默认档位（尚未手动切换）';
+      const formatTriggerTime = (iso) => {
+        if (!iso) return '暂无触发记录';
         const date = new Date(iso);
-        return Number.isNaN(date.getTime()) ? iso : `上次切换：${date.toLocaleString()}`;
+        return Number.isNaN(date.getTime()) ? `最近触发：${iso}` : `最近触发：${date.toLocaleString()}`;
+      };
+
+      const renderStats = (stats) => {
+        const deny = Number(stats?.denyCount ?? 0);
+        const recovery = Number(stats?.recoveryCount ?? 0);
+        lastStats = {
+          denyCount: deny,
+          recoveryCount: recovery,
+          lastTriggeredAt: stats?.lastTriggeredAt ?? null,
+        };
+        denyCountEl.textContent = String(deny);
+        recoveryCountEl.textContent = String(recovery);
+        denyCountEl.className = deny > 0 ? 'stat-num nonzero' : 'stat-num';
+        recoveryCountEl.className = recovery > 0 ? 'stat-num nonzero' : 'stat-num';
+        resetStatsBtn.disabled = busy || (deny === 0 && recovery === 0);
       };
 
       const render = (state) => {
         activePresetId = state.presetId;
         badgeEl.textContent = `当前：${state.presetId} 行档`;
-        statusMetaEl.textContent = `${formatTime(state.updatedAt)} · Hook 即时生效，规则已同步`;
+        renderStats(state.stats);
 
         listEl.innerHTML = '';
         for (const preset of state.presets) {
@@ -328,15 +411,23 @@
         }
       };
 
-      const loadState = async () => {
+      const loadState = async (silent = false) => {
+        if (loading) return;
+        loading = true;
         try {
           const res = await apiFetch('/api/state', { method: 'GET' });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const state = await res.json();
           render(state);
-          setStatus(`已加载 ${state.active.label}`, '');
+          if (!silent || statusKind === '') {
+            setStatus(formatTriggerTime(state.stats?.lastTriggeredAt), '');
+          }
         } catch (err) {
-          setStatus(`读取状态失败：${err.message}`, 'err');
+          if (!silent) {
+            setStatus(`读取状态失败：${err.message}`, 'err');
+          }
+        } finally {
+          loading = false;
         }
       };
 
@@ -345,6 +436,7 @@
         busy = true;
         setStatus(`正在切换至 ${presetId} 行档…`, '');
         for (const btn of listEl.querySelectorAll('button')) btn.disabled = true;
+        resetStatsBtn.disabled = true;
 
         let nextState = null;
         let errorMessage = '';
@@ -370,8 +462,47 @@
         }
 
         for (const btn of listEl.querySelectorAll('button')) btn.disabled = false;
+        renderStats(lastStats);
         setStatus(`切换失败：${errorMessage}`, 'err');
       };
+
+      const resetStats = async () => {
+        if (busy || resetStatsBtn.disabled) return;
+        busy = true;
+        resetStatsBtn.disabled = true;
+
+        let nextState = null;
+        let errorMessage = '';
+        try {
+          const res = await apiFetch('/api/stats/reset', { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          nextState = data;
+        } catch (err) {
+          errorMessage = err.message;
+        } finally {
+          busy = false;
+        }
+
+        if (nextState) {
+          render(nextState);
+          setStatus('触发统计已清零', 'ok');
+          return;
+        }
+
+        setStatus(`清零失败：${errorMessage}`, 'err');
+        loadState(true);
+      };
+
+      resetStatsBtn.addEventListener('click', resetStats);
+
+      // 切回面板时自动拉取最新统计，避免后台定时轮询
+      window.addEventListener('focus', () => {
+        if (!busy) loadState(true);
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && !busy) loadState(true);
+      });
 
       loadState();
     })();

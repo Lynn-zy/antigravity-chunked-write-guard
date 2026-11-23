@@ -1,4 +1,5 @@
 import { handlePreInvocation, handlePreToolUse } from './hook-core.mjs';
+import { recordTriggerEvent } from './stats.mjs';
 
 const readStdinAsync = (timeoutMs = 2_000) =>
   new Promise((resolve) => {
@@ -38,12 +39,18 @@ const main = async () => {
 
   if (mode === 'pre-invocation') {
     const out = handlePreInvocation(payload);
+    if (Array.isArray(out.injectSteps) && out.injectSteps.length > 0) {
+      recordTriggerEvent('recovery');
+    }
     process.stdout.write(`${JSON.stringify(out)}\n`);
     return;
   }
 
   if (mode === 'pre-tool-use') {
     const out = handlePreToolUse(payload);
+    if (out.decision === 'deny') {
+      recordTriggerEvent('deny');
+    }
     process.stdout.write(`${JSON.stringify(out)}\n`);
     return;
   }

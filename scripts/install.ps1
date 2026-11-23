@@ -42,6 +42,7 @@ $FilesToCopy = @(
     "assets\logo.svg",
     "rules\AGENTS.md",
     "scripts\presets.mjs",
+    "scripts\stats.mjs",
     "scripts\hook-core.mjs",
     "scripts\write-guard-hook.mjs",
     "scripts\hook-core.test.mjs",

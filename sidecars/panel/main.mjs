@@ -3,7 +3,11 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildPanelState, handleSetPreset } from './panel-logic.mjs';
+import {
+  buildPanelState,
+  handleResetStats,
+  handleSetPreset,
+} from './panel-logic.mjs';
 
 const PANEL_DIR = path.dirname(fileURLToPath(import.meta.url));
 const INDEX_HTML_PATH = path.join(PANEL_DIR, 'index.html');
@@ -60,6 +64,8 @@ const start = async () => {
     },
     'POST',
   );
+
+  app.api('/api/stats/reset', () => handleResetStats().state, 'POST');
 
   await app.run();
 
