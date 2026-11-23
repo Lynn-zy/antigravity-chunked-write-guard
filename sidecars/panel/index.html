@@ -14,7 +14,6 @@
       --wg-subtle: rgba(255, 255, 255, 0.03);
       --wg-border: var(--border, rgba(255, 255, 255, 0.1));
       --wg-accent: var(--primary, #ffc799);
-      --wg-accent-fg: var(--primary-foreground, #111111);
       --wg-ok: #34d399;
       --wg-err: #f87171;
     }
@@ -243,7 +242,7 @@
       <span class="title">Chunked Write Guard</span>
       <span id="activeBadge" class="badge">加载中…</span>
     </div>
-    <p class="subtitle">点击下方档位切换单次写入预算。Hook 门禁即时生效，常驻规则文件同步写入。</p>
+    <p class="subtitle">点击下方档位切换单次写入限制。Hook 立即生效，规则文件同步更新。</p>
 
     <div id="presetList" class="preset-list" role="group" aria-label="写入阈值档位"></div>
 
@@ -252,7 +251,7 @@
         <span id="statusDot" class="status-dot"></span>
         <span id="statusMsg" class="status-msg">正在读取当前配置…</span>
       </div>
-      <div id="statusMeta">Hook 拦截与断流自愈无需重启；AGENTS.md 规则将于新会话或重载后更新。</div>
+      <div id="statusMeta">Hook 拦截与断流恢复无需重启，AGENTS.md 规则在新会话或重载后更新。</div>
     </div>
   </main>
 
@@ -304,11 +303,11 @@
             <p class="card-desc">${preset.summary}</p>
             <div class="metrics">
               <div class="metric-cell">
-                <span class="metric-label">规则目标</span>
+                <span class="metric-label">单次写入目标</span>
                 <span class="metric-val">≤ ${preset.softTargetLines} 行</span>
               </div>
               <div class="metric-cell">
-                <span class="metric-label">PreToolUse 兜底线</span>
+                <span class="metric-label">单次写入上限</span>
                 <span class="metric-val">${preset.maxWriteLines} 行 / ${preset.maxWriteKb} KB</span>
               </div>
               <div class="metric-cell">
@@ -316,7 +315,7 @@
                 <span class="metric-val">${preset.maxEditCombinedLines} 行 / ${preset.maxEditCombinedKb} KB</span>
               </div>
               <div class="metric-cell">
-                <span class="metric-label">断流自愈上限</span>
+                <span class="metric-label">断流恢复上限</span>
                 <span class="metric-val">≤ ${preset.recoveryTargetLines} 行</span>
               </div>
             </div>
@@ -344,6 +343,8 @@
         setStatus(`正在切换至 ${presetId} 行档…`, '');
         for (const btn of listEl.querySelectorAll('button')) btn.disabled = true;
 
+        let nextState = null;
+        let errorMessage = '';
         try {
           const res = await apiFetch('/api/preset', {
             method: 'POST',
@@ -352,14 +353,21 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-          busy = false;
-          render(data);
-          setStatus(`已切换为 ${data.active.label}（Hook 即时生效，AGENTS.md 已同步）`, 'ok');
+          nextState = data;
         } catch (err) {
+          errorMessage = err.message;
+        } finally {
           busy = false;
-          for (const btn of listEl.querySelectorAll('button')) btn.disabled = false;
-          setStatus(`切换失败：${err.message}`, 'err');
         }
+
+        if (nextState) {
+          render(nextState);
+          setStatus(`已切换为 ${nextState.active.label}（Hook 已生效，AGENTS.md 已同步）`, 'ok');
+          return;
+        }
+
+        for (const btn of listEl.querySelectorAll('button')) btn.disabled = false;
+        setStatus(`切换失败：${errorMessage}`, 'err');
       };
 
       loadState();

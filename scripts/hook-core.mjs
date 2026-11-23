@@ -35,51 +35,42 @@ export const measureText = (text) => {
 
 const formatKilobytes = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 
+const formatTargetLabel = (filePath) => (filePath ? `「${filePath}」` : '目标文件');
+
 const pickStringArg = (args, primaryKey, fallbackKey) => {
   const value = args?.[primaryKey] ?? args?.[fallbackKey];
   return typeof value === 'string' ? value : '';
 };
 
-const resolveRuntimeConfig = (options) => {
-  if (options?.config) {
-    return options.config;
-  }
-  return readActivePresetState({ configPath: options?.configPath }).config;
-};
+const resolveRuntimeConfig = (options) =>
+  options?.config ?? readActivePresetState({ configPath: options?.configPath }).config;
 
-const isStreamInterruptEntry = (entry) => {
-  if (!entry || entry.type !== 'ERROR_MESSAGE') {
-    return false;
-  }
-  return typeof entry.content === 'string' && STREAM_INTERRUPT_RE.test(entry.content);
-};
+const isStreamInterruptEntry = (entry) =>
+  entry.type === 'ERROR_MESSAGE' &&
+  typeof entry.content === 'string' &&
+  STREAM_INTERRUPT_RE.test(entry.content);
 
-const isRecoveryMarkerEntry = (entry, recoveryMarker) => {
-  if (!entry || entry.type !== 'SYSTEM_MESSAGE') {
-    return false;
-  }
-  return typeof entry.content === 'string' && entry.content.includes(recoveryMarker);
-};
+const isRecoveryMarkerEntry = (entry, recoveryMarker) =>
+  entry.type === 'SYSTEM_MESSAGE' &&
+  typeof entry.content === 'string' &&
+  entry.content.includes(recoveryMarker);
 
 const isHealthyProgressEntry = (entry) => {
-  if (!entry) {
-    return false;
-  }
   // 工具返回结果表示上一轮工具调用已正常落盘并执行完毕
   if (entry.type === 'GENERIC') {
     return true;
   }
-  if (entry.type === 'PLANNER_RESPONSE') {
-    const hasTools = Array.isArray(entry.tool_calls) && entry.tool_calls.length > 0;
-    const hasText = typeof entry.content === 'string' && entry.content.trim().length > 0;
-    return hasTools || hasText;
+  if (entry.type !== 'PLANNER_RESPONSE') {
+    return false;
   }
-  return false;
+  const hasTools = Array.isArray(entry.tool_calls) && entry.tool_calls.length > 0;
+  const hasText = typeof entry.content === 'string' && entry.content.trim().length > 0;
+  return hasTools || hasText;
 };
 
 /**
  * 从会话 transcript 尾部检测最近是否刚发生未恢复的流中断。
- * 无需外部状态文件：通过倒序扫描尾部日志，在遇到有效进展或已注入标记前统计断流次数。
+ * 倒序扫描尾部日志，在遇到有效进展或已注入标记前统计连续断流次数。
  * @param {string} transcriptPath - Antigravity 会话 transcript.jsonl 路径
  * @param {{ tailBytes?: number, recoveryMarker?: string }} [options] - 可选尾部读取字节上限与去重标记
  * @returns {{ interrupted: boolean, consecutiveInterrupts: number }} 断流检测结果
@@ -132,18 +123,17 @@ export const detectRecentStreamInterruption = (transcriptPath, options = {}) => 
     } catch {
       continue;
     }
+    if (!entry || typeof entry !== 'object') {
+      continue;
+    }
 
     if (isStreamInterruptEntry(entry)) {
       consecutiveInterrupts += 1;
       continue;
     }
 
-    // 已经出现过恢复标记：若之前尚未遇到更新的断流，说明本轮已提醒过，避免重复注入
-    if (isRecoveryMarkerEntry(entry, recoveryMarker)) {
-      break;
-    }
-
-    if (isHealthyProgressEntry(entry)) {
+    // 遇到已注入标记或有效进展时停止回溯，避免重复注入
+    if (isRecoveryMarkerEntry(entry, recoveryMarker) || isHealthyProgressEntry(entry)) {
       break;
     }
   }
@@ -160,15 +150,15 @@ const buildRecoverySystemMessage = (consecutiveInterrupts, config) => {
       ? `（已连续中断 ${consecutiveInterrupts} 次）`
       : '';
   return [
-    `${config.recoveryMarker} 检测到上一轮发生流式中断${countNote}，通常由单次生成过长内容或超大 write_file/edit_file 参数引起。`,
-    `当前档位：${config.label ?? `${config.softTargetLines} 行`}。本轮必须打破重试循环：`,
-    `1. 严禁一次性写入完整长文件，单次 write_file / edit_file 正文严格控制在 ≤ ${config.recoveryTargetLines} 行以内；`,
-    '2. 先用 write_file 写入精简骨架并立即落盘，再用 write_file(Append: true) 或多次小范围 edit_file 分模块补齐。',
+    `${config.recoveryMarker} 检测到上一轮发生流式中断${countNote}，通常由单次输出过长或超大 write_file / edit_file 参数引起。`,
+    `当前档位为 ${config.label ?? `${config.softTargetLines} 行`}，本轮按以下方式续写：`,
+    `1. 禁止一次性写入完整长文件，单次 write_file / edit_file 新内容控制在 ≤ ${config.recoveryTargetLines} 行以内；`,
+    '2. 先用 write_file 写入骨架并落盘，再用 write_file(Append: true) 或多次局部 edit_file 按模块补齐。',
   ].join('\n');
 };
 
 /**
- * 处理 PreInvocation 事件：仅在检测到刚发生未恢复的流中断时注入一次分段写入自愈提醒。
+ * 处理 PreInvocation 事件：仅在检测到刚发生未恢复的流中断时注入一次分段写入恢复提醒。
  * @param {Record<string, unknown>} payload - Antigravity 传入的 stdin JSON
  * @param {{ config?: Record<string, unknown>, configPath?: string }} [options] - 可选配置覆盖
  * @returns {Record<string, unknown>} PreInvocation 响应对象
@@ -211,17 +201,17 @@ const evaluateWriteFile = (args, config) => {
   }
 
   const modeLabel = isAppend ? 'write_file (Append)' : 'write_file';
-  const targetLabel = filePath ? `「${filePath}」` : '目标文件';
+  const targetLabel = formatTargetLabel(filePath);
   const nextStepHint = isAppend
     ? `请将追加内容拆分为多段调用 write_file(Append: true)，每次控制在 ≤ ${config.softTargetLines} 行以内。`
-    : `请先用 write_file 写入核心骨架（≤ ${config.softTargetLines} 行），再通过多次 write_file(Append: true) 或 edit_file 分模块补齐。`;
+    : `请先用 write_file 写入骨架（≤ ${config.softTargetLines} 行），再通过多次 write_file(Append: true) 或 edit_file 按模块补齐。`;
 
   return {
     decision: 'deny',
     reason:
-      `[chunked-write-guard] 已拦截超大 ${modeLabel} 写入 ${targetLabel}：` +
+      `[chunked-write-guard] 已拦截超大 ${modeLabel} 写入 ${targetLabel}，` +
       `本次共 ${lines} 行 / ${formatKilobytes(bytes)}，` +
-      `超过当前档位安全阈值（${config.maxWriteLines} 行或 ${formatKilobytes(config.maxWriteBytes)}）。` +
+      `超过单次写入上限（${config.maxWriteLines} 行或 ${formatKilobytes(config.maxWriteBytes)}）。` +
       nextStepHint,
   };
 };
@@ -230,49 +220,50 @@ const evaluateEditFile = (args, config) => {
   const replacement = pickStringArg(args, 'Replacement', 'replacement');
   const target = pickStringArg(args, 'Target', 'target');
   const filePath = pickStringArg(args, 'Path', 'path');
+  const targetLabel = formatTargetLabel(filePath);
   const replacementStats = measureText(replacement);
 
   if (
     replacementStats.lines > config.maxWriteLines ||
     replacementStats.bytes > config.maxWriteBytes
   ) {
-    const targetLabel = filePath ? `「${filePath}」` : '目标文件';
     return {
       decision: 'deny',
       reason:
-        `[chunked-write-guard] 已拦截超大 edit_file 替换 ${targetLabel}：` +
+        `[chunked-write-guard] 已拦截超大 edit_file 替换 ${targetLabel}，` +
         `Replacement 共 ${replacementStats.lines} 行 / ${formatKilobytes(replacementStats.bytes)}，` +
-        `超过当前档位安全阈值（${config.maxWriteLines} 行或 ${formatKilobytes(config.maxWriteBytes)}）。` +
-        `请拆分为多个局部小范围 edit_file 调用，每次替换控制在 ≤ ${config.softTargetLines} 行以内。`,
+        `超过单次写入上限（${config.maxWriteLines} 行或 ${formatKilobytes(config.maxWriteBytes)}）。` +
+        `请拆分为多个局部 edit_file 调用，每次替换控制在 ≤ ${config.softTargetLines} 行以内。`,
     };
   }
 
-  // 允许纯删除（Replacement 为空）清理大段旧代码；仅在非空大替换且双向合计失控时拦截
-  if (replacementStats.bytes > 0) {
-    const targetStats = measureText(target);
-    const combinedLines = targetStats.lines + replacementStats.lines;
-    const combinedBytes = targetStats.bytes + replacementStats.bytes;
-    if (
-      combinedLines > config.maxEditCombinedLines ||
-      combinedBytes > config.maxEditCombinedBytes
-    ) {
-      const targetLabel = filePath ? `「${filePath}」` : '目标文件';
-      return {
-        decision: 'deny',
-        reason:
-          `[chunked-write-guard] 已拦截全量覆盖式 edit_file ${targetLabel}：` +
-          `Target + Replacement 合计 ${combinedLines} 行 / ${formatKilobytes(combinedBytes)}，` +
-          `超过当前档位安全阈值（${config.maxEditCombinedLines} 行或 ${formatKilobytes(config.maxEditCombinedBytes)}）。` +
-          '请缩小 Target 锚点范围，拆分为多次局部编辑。',
-      };
-    }
+  // 允许纯删除（Replacement 为空）清理大段旧代码
+  if (replacementStats.bytes === 0) {
+    return { decision: 'allow' };
+  }
+
+  const targetStats = measureText(target);
+  const combinedLines = targetStats.lines + replacementStats.lines;
+  const combinedBytes = targetStats.bytes + replacementStats.bytes;
+  if (
+    combinedLines > config.maxEditCombinedLines ||
+    combinedBytes > config.maxEditCombinedBytes
+  ) {
+    return {
+      decision: 'deny',
+      reason:
+        `[chunked-write-guard] 已拦截全量覆盖式 edit_file ${targetLabel}，` +
+        `Target + Replacement 合计 ${combinedLines} 行 / ${formatKilobytes(combinedBytes)}，` +
+        `超过 edit_file 合计上限（${config.maxEditCombinedLines} 行或 ${formatKilobytes(config.maxEditCombinedBytes)}）。` +
+        '请缩小 Target 锚点范围，拆分为多次局部编辑。',
+    };
   }
 
   return { decision: 'allow' };
 };
 
 /**
- * 处理 PreToolUse 事件：按当前生效档位对超阈值的 write_file / edit_file 进行兜底拦截。
+ * 处理 PreToolUse 事件：按当前生效档位拦截超限的 write_file / edit_file 调用。
  * @param {Record<string, unknown>} payload - Antigravity 传入的 stdin JSON
  * @param {{ config?: Record<string, unknown>, configPath?: string }} [options] - 可选配置覆盖
  * @returns {{ decision: 'allow' | 'deny', reason?: string }} PreToolUse 决策对象
