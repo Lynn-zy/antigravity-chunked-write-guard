@@ -1,6 +1,6 @@
 {
   "name": "antigravity-chunked-write-guard",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Antigravity plugin that prevents long-stream timeouts by enforcing chunked file writes with a 700/500/300 side-pane switcher, PreInvocation stream recovery, and PreToolUse write guard.",
   "type": "module",
   "license": "MIT",

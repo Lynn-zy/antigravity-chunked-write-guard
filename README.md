@@ -11,7 +11,7 @@
 1. **常驻规则（`rules/AGENTS.md`）**：约定单次写入目标。长文件先写骨架，再通过多次 `write_file(Append: true)` 或 `edit_file` 按模块补齐。
 2. **断流恢复（`PreInvocation` Hook）**：扫描 `transcript.jsonl` 尾部。仅在上一轮出现未恢复的 `stream was interrupted` 或流超时记录时注入一次续写提醒，并附带去重标记。正常对话直接返回 `{}`，不增加上下文，不影响 Prompt Cache。
 3. **超大写入拦截（`PreToolUse` Hook）**：匹配 `write_file|edit_file`，拦截超过单次写入上限的写入和超过合计上限的全量替换，并返回拆分建议。纯删除旧代码（`Replacement` 为空）直接放行，脚本异常时自动 `fail-open` 放行。
-4. **侧边栏切换面板（Sidecar UI）**：内置 Write Guard 侧边栏面板，可在 `700`、`500`（默认）、`300` 三档间切换。切换后 Hook 阈值立即生效，`rules/AGENTS.md` 同步重写。
+4. **侧边栏切换面板（Sidecar UI）**：内置 Write Guard 侧边栏面板，可在 `700`、`500`（默认）、`300` 三档间切换，同时展示超限拦截与断流恢复次数并支持清零。切换后 Hook 阈值立即生效，`rules/AGENTS.md` 同步重写。
 
 ## 三档阈值
 
@@ -63,6 +63,7 @@ bash ./scripts/install.sh --uninstall
 ├── rules/AGENTS.md              # 常驻分段写入规范（与当前档位同步）
 ├── scripts/
 │   ├── presets.mjs              # 三档配置与规则渲染
+│   ├── stats.mjs                # 触发事件追加日志与统计清零
 │   ├── hook-core.mjs            # 阈值判定与断流检测逻辑
 │   ├── write-guard-hook.mjs     # Hook CLI 入口（fail-open）
 │   ├── hook-core.test.mjs       # Node 单元测试
