@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Write Guard</title>
+  <script src="/preload.js"></script>
+  <style>
+    :root {
+      --wg-bg: var(--background, #101010);
+      --wg-fg: var(--foreground, #f5f5f5);
+      --wg-muted: var(--muted-foreground, #9ca3af);
+      --wg-card: var(--card, rgba(255, 255, 255, 0.035));
+      --wg-subtle: rgba(255, 255, 255, 0.03);
+      --wg-border: var(--border, rgba(255, 255, 255, 0.1));
+      --wg-accent: var(--primary, #ffc799);
+      --wg-accent-fg: var(--primary-foreground, #111111);
+      --wg-ok: #34d399;
+      --wg-err: #f87171;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--wg-bg);
+      color: var(--wg-fg);
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 定制 Chromium/Electron 细滚动条，避免 Windows 原生亮白粗滚动条 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in srgb, var(--wg-fg) 18%, transparent);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: color-mix(in srgb, var(--wg-fg) 32%, transparent);
+    }
+
+    ::-webkit-scrollbar-corner,
+    ::-webkit-scrollbar-button {
+      display: none;
+    }
+
+    /* 独立外层容器：避免 preload.js 内联设置的 body.style.padding = 0 清除边距 */
+    .page {
+      padding: 16px 16px 18px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .badge {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      background: color-mix(in srgb, var(--wg-accent) 16%, transparent);
+      color: var(--wg-accent);
+      border: 1px solid color-mix(in srgb, var(--wg-accent) 38%, transparent);
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--wg-muted);
+    }
+
+    .preset-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .preset-card {
+      width: 100%;
+      text-align: left;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--wg-border);
+      background: var(--wg-card);
+      color: inherit;
+      cursor: pointer;
+      transition: border-color 140ms ease, background 140ms ease, transform 120ms ease;
+    }
+
+    .preset-card:hover {
+      border-color: color-mix(in srgb, var(--wg-accent) 48%, var(--wg-border));
+      background: color-mix(in srgb, var(--wg-accent) 4%, var(--wg-card));
+    }
+
+    .preset-card:hover .action-pill {
+      color: var(--wg-accent);
+      border-color: color-mix(in srgb, var(--wg-accent) 40%, transparent);
+    }
+
+    .preset-card:active {
+      transform: scale(0.994);
+    }
+
+    .preset-card[aria-pressed="true"] {
+      border-color: color-mix(in srgb, var(--wg-accent) 75%, var(--wg-border));
+      background: color-mix(in srgb, var(--wg-accent) 8%, var(--wg-card));
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wg-accent) 18%, transparent);
+    }
+
+    .preset-card:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .card-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .action-pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--wg-muted);
+      border: 1px solid var(--wg-border);
+      transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .preset-card[aria-pressed="true"] .action-pill {
+      font-weight: 600;
+      color: var(--wg-accent);
+      border-color: color-mix(in srgb, var(--wg-accent) 45%, transparent);
+      background: color-mix(in srgb, var(--wg-accent) 14%, transparent);
+    }
+
+    .card-desc {
+      margin: 0 0 10px;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--wg-muted);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .metric-cell {
+      padding: 6px 9px;
+      border-radius: 8px;
+      background: var(--wg-subtle);
+      border: 1px solid color-mix(in srgb, var(--wg-border) 65%, transparent);
+    }
+
+    .metric-label {
+      color: var(--wg-muted);
+      display: block;
+      font-size: 10.5px;
+      margin-bottom: 1px;
+    }
+
+    .metric-val {
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status-bar {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--wg-border);
+      background: var(--wg-card);
+      font-size: 11.5px;
+      color: var(--wg-muted);
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 4px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--wg-accent);
+    }
+
+    .status-dot.ok { background: var(--wg-ok); }
+    .status-dot.err { background: var(--wg-err); }
+
+    .status-msg {
+      color: var(--wg-fg);
+      font-weight: 500;
+    }
+
+    .status-msg.ok { color: var(--wg-ok); }
+    .status-msg.err { color: var(--wg-err); }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="header">
+      <span class="title">Chunked Write Guard</span>
+      <span id="activeBadge" class="badge">加载中…</span>
+    </div>
+    <p class="subtitle">点击下方档位切换单次写入预算。Hook 门禁即时生效，常驻规则文件同步写入。</p>
+
+    <div id="presetList" class="preset-list" role="group" aria-label="写入阈值档位"></div>
+
+    <div class="status-bar">
+      <div class="status-row">
+        <span id="statusDot" class="status-dot"></span>
+        <span id="statusMsg" class="status-msg">正在读取当前配置…</span>
+      </div>
+      <div id="statusMeta">Hook 拦截与断流自愈无需重启；AGENTS.md 规则将于新会话或重载后更新。</div>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const listEl = document.getElementById('presetList');
+      const badgeEl = document.getElementById('activeBadge');
+      const statusDotEl = document.getElementById('statusDot');
+      const statusMsgEl = document.getElementById('statusMsg');
+      const statusMetaEl = document.getElementById('statusMeta');
+      let busy = false;
+
+      const apiFetch = (url, options = {}) => {
+        if (window.sidecar && typeof window.sidecar.fetch === 'function') {
+          return window.sidecar.fetch(url, options);
+        }
+        return fetch(url, options);
+      };
+
+      const setStatus = (text, kind = '') => {
+        statusMsgEl.textContent = text;
+        statusMsgEl.className = kind ? `status-msg ${kind}` : 'status-msg';
+        statusDotEl.className = kind ? `status-dot ${kind}` : 'status-dot';
+      };
+
+      const formatTime = (iso) => {
+        if (!iso) return '默认档位（尚未手动切换）';
+        const date = new Date(iso);
+        return Number.isNaN(date.getTime()) ? iso : `上次切换：${date.toLocaleString()}`;
+      };
+
+      const render = (state) => {
+        badgeEl.textContent = `当前：${state.presetId} 行档`;
+        statusMetaEl.textContent = `${formatTime(state.updatedAt)} · Hook 即时生效，规则已同步`;
+
+        listEl.innerHTML = '';
+        for (const preset of state.presets) {
+          const isActive = preset.id === state.presetId;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'preset-card';
+          btn.disabled = busy;
+          btn.setAttribute('aria-pressed', String(isActive));
+          btn.innerHTML = `
+            <div class="card-top">
+              <span class="card-title">${preset.label}</span>
+              <span class="action-pill">${isActive ? '● 生效中' : '切换'}</span>
+            </div>
+            <p class="card-desc">${preset.summary}</p>
+            <div class="metrics">
+              <div class="metric-cell">
+                <span class="metric-label">规则目标</span>
+                <span class="metric-val">≤ ${preset.softTargetLines} 行</span>
+              </div>
+              <div class="metric-cell">
+                <span class="metric-label">PreToolUse 兜底线</span>
+                <span class="metric-val">${preset.maxWriteLines} 行 / ${preset.maxWriteKb} KB</span>
+              </div>
+              <div class="metric-cell">
+                <span class="metric-label">edit_file 合计上限</span>
+                <span class="metric-val">${preset.maxEditCombinedLines} 行 / ${preset.maxEditCombinedKb} KB</span>
+              </div>
+              <div class="metric-cell">
+                <span class="metric-label">断流自愈上限</span>
+                <span class="metric-val">≤ ${preset.recoveryTargetLines} 行</span>
+              </div>
+            </div>
+          `;
+          btn.addEventListener('click', () => switchPreset(preset.id));
+          listEl.appendChild(btn);
+        }
+      };
+
+      const loadState = async () => {
+        try {
+          const res = await apiFetch('/api/state', { method: 'GET' });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const state = await res.json();
+          render(state);
+          setStatus(`已加载 ${state.active.label}`, '');
+        } catch (err) {
+          setStatus(`读取状态失败：${err.message}`, 'err');
+        }
+      };
+
+      const switchPreset = async (presetId) => {
+        if (busy) return;
+        busy = true;
+        setStatus(`正在切换至 ${presetId} 行档…`, '');
+        for (const btn of listEl.querySelectorAll('button')) btn.disabled = true;
+
+        try {
+          const res = await apiFetch('/api/preset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ presetId }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          busy = false;
+          render(data);
+          setStatus(`已切换为 ${data.active.label}（Hook 即时生效，AGENTS.md 已同步）`, 'ok');
+        } catch (err) {
+          busy = false;
+          for (const btn of listEl.querySelectorAll('button')) btn.disabled = false;
+          setStatus(`切换失败：${err.message}`, 'err');
+        }
+      };
+
+      loadState();
+    })();
+  </script>
+</body>
+</html>
