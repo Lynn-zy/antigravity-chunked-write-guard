@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0] - 2026-11-24
+
+### Changed
+- 将超大写入处理由 `PreToolUse` 硬拦截改为 `PostToolUse` 落盘后检测加下一轮 `PreInvocation` 事后提醒，不再阻断写入或丢弃已生成代码。
+- 待提醒记录按 `conversationId` 哈希隔离存放在 `config/pending/`，读取一次后立即删除并附带 30 分钟过期丢弃；没有超限写入时 `PreInvocation` 直接返回 `{}`。
+- 侧边栏面板同步升级：档位卡片展示单次写入目标、单次写入警戒线与 `edit_file` 合计警戒线，开关改为「超限事后提醒」（接口 `/api/reminder`），统计改为「超限落盘」与「事后提醒」。
+- 重写 `rules/AGENTS.md` 常驻规则，与新的警戒线和事后提醒开关保持一致。
+
+### Removed
+- 移除 `PreToolUse` 硬拦截，避免模型完成流式输出后因拦截被迫重新生成。
+- 移除基于 `transcript.jsonl` 的断流恢复 Hook 与对应开关，避免把用户手动停止或上游 10 分钟无响应误判为大文件超时。
+
 ## [1.3.1] - 2026-11-24
 
 ### Added
