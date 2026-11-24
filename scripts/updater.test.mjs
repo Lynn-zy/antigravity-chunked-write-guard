@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -134,11 +134,22 @@ test('fetchLatestReleaseInfo prefers Releases and falls back to highest stable T
           '<entry><link href="https://github.com/Lynn-zy/antigravity-chunked-write-guard/releases/tag/v1.3.5"/></entry></feed>',
       };
     }
+    if (url.endsWith('/v1.3.5/CHANGELOG.md')) {
+      return {
+        ok: true,
+        status: 200,
+        url,
+        text: async () =>
+          '# Changelog\n\n## [1.3.5] - 2026-11-24\n\n### Fixed\n- 修复 Windows 目录锁导致替换失败\n\n## [1.3.0] - 2026-11-24\n- 旧记录\n',
+      };
+    }
     throw new Error(`Unexpected URL: ${url}`);
   };
   const fromPublicAtom = await fetchLatestReleaseInfo({ fetchImpl: rateLimitedFallbackFetch });
   assert.equal(fromPublicAtom.source, 'tag');
   assert.equal(fromPublicAtom.version, '1.3.5');
+  assert.match(fromPublicAtom.releaseNotes, /修复 Windows 目录锁导致替换失败/);
+  assert.doesNotMatch(fromPublicAtom.releaseNotes, /旧记录/);
   assert.match(fromPublicAtom.tarballUrl, /^https:\/\/github\.com\/.*\/archive\/refs\/tags\/v1\.3\.5\.tar\.gz$/);
 
   const allFailedFetch = async () => createMockJsonResponse(403, { message: 'rate limit' });
@@ -320,6 +331,64 @@ test('extractAndVerifyTarball rejects version mismatch and swapRuntimeEntries ro
       '{"type":"deny"}\n',
     );
   } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('swapRuntimeEntries succeeds and rolls back even when sidecars/panel directory is locked', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wg-dirlock-test-'));
+  let holder = null;
+  try {
+    const installedDir = path.join(tempDir, 'installed');
+    const newSourceDir = path.join(tempDir, 'source');
+    const backupDir = path.join(tempDir, 'backup');
+    copyRuntimeFixture(installedDir, '1.2.0');
+    copyRuntimeFixture(newSourceDir, '1.3.0');
+    // 在旧版新增一个待清理的废弃文件，并在新版新增一个额外文件用于验证回滚清理
+    fs.writeFileSync(path.join(installedDir, 'sidecars', 'panel', 'obsolete.txt'), 'old', 'utf8');
+    fs.writeFileSync(path.join(newSourceDir, 'sidecars', 'panel', 'added.txt'), 'new', 'utf8');
+
+    // 启动子进程将工作目录锁在 sidecars/panel，真实复现 Windows 目录句柄占用
+    const panelDir = path.join(installedDir, 'sidecars', 'panel');
+    holder = spawn(process.execPath, ['-e', 'console.log("locked"); setTimeout(() => {}, 30000);'], {
+      cwd: panelDir,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      windowsHide: true,
+    });
+    await new Promise((resolve, reject) => {
+      holder.stdout.once('data', resolve);
+      holder.once('exit', () => reject(new Error('holder exited early')));
+    });
+
+    // 1. 目录被锁时安装失败仍能完整回滚，且不会清空 sidecars/panel
+    await assert.rejects(
+      () =>
+        swapRuntimeEntries(newSourceDir, installedDir, backupDir, {
+          syncRules: async () => {
+            throw new Error('模拟故障');
+          },
+        }),
+      /已回滚至原版本/,
+    );
+    assert.equal(fs.existsSync(path.join(panelDir, 'main.mjs')), true);
+    assert.equal(fs.existsSync(path.join(panelDir, 'obsolete.txt')), true);
+    assert.equal(fs.existsSync(path.join(panelDir, 'added.txt')), false);
+
+    // 2. 目录被锁时正常升级应完全成功、更新版本并清理废弃旧文件
+    const backupDir2 = path.join(tempDir, 'backup-2');
+    await swapRuntimeEntries(newSourceDir, installedDir, backupDir2, {
+      syncRules: async () => {},
+    });
+    const upgraded = JSON.parse(fs.readFileSync(path.join(installedDir, 'plugin.json'), 'utf8'));
+    assert.equal(upgraded.version, '1.3.0');
+    assert.equal(fs.existsSync(path.join(panelDir, 'main.mjs')), true);
+    assert.equal(fs.existsSync(path.join(panelDir, 'added.txt')), true);
+    assert.equal(fs.existsSync(path.join(panelDir, 'obsolete.txt')), false);
+  } finally {
+    if (holder) {
+      holder.kill();
+      await new Promise((resolve) => holder.once('exit', resolve));
+    }
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });

@@ -23,6 +23,7 @@ const ALLOWED_DOWNLOAD_HOSTS = Object.freeze([
 export const RUNTIME_ENTRIES = Object.freeze([
   'plugin.json',
   'hooks.json',
+  'CHANGELOG.md',
   'assets',
   'rules',
   'scripts',
@@ -32,6 +33,7 @@ export const RUNTIME_ENTRIES = Object.freeze([
 const REQUIRED_FILES = Object.freeze([
   'plugin.json',
   'hooks.json',
+  'CHANGELOG.md',
   'assets/logo.svg',
   'rules/AGENTS.md',
   'scripts/presets.mjs',
@@ -190,7 +192,35 @@ const pickHighestStableTag = (repo, tagItems) => {
   return best;
 };
 
+const extractChangelogSection = (markdown, version) => {
+  const lines = String(markdown ?? '').replace(/\r\n/g, '\n').split('\n');
+  const startIdx = lines.findIndex((line) => line.startsWith(`## [${version}]`));
+  if (startIdx === -1) return '';
+  const nextIdx = lines.findIndex((line, i) => i > startIdx && line.startsWith('## ['));
+  return sanitizeReleaseNotes(
+    lines.slice(startIdx + 1, nextIdx === -1 ? lines.length : nextIdx).join('\n'),
+  );
+};
+
+const fetchChangelogNotes = async ({ repo, tagName, version, fetchImpl, timeoutMs }) => {
+  try {
+    const res = await fetchWithTimeout(
+      `https://raw.githubusercontent.com/${repo}/${encodeURIComponent(tagName)}/CHANGELOG.md`,
+      {
+        fetchImpl,
+        timeoutMs: Math.min(timeoutMs, 8_000),
+        headers: { 'User-Agent': 'chunked-write-guard-updater' },
+      },
+    );
+    if (!res.ok || typeof res.text !== 'function') return '';
+    return extractChangelogSection(await res.text(), version);
+  } catch {
+    return '';
+  }
+};
+
 const fetchPublicFallback = async ({ repo, fetchImpl, timeoutMs }) => {
+  let result = null;
   const latestPageRes = await fetchWithTimeout(
     `https://github.com/${repo}/releases/latest`,
     { fetchImpl, timeoutMs, headers: { 'User-Agent': 'chunked-write-guard-updater' } },
@@ -203,7 +233,7 @@ const fetchPublicFallback = async ({ repo, fetchImpl, timeoutMs }) => {
       const tagName = decodeURIComponent(parsedUrl.pathname.slice(prefix.length));
       const semver = parseSemver(tagName);
       if (semver) {
-        return {
+        result = {
           version: semver.normalized,
           tagName,
           tarballUrl: buildArchiveTarballUrl(repo, tagName),
@@ -216,16 +246,27 @@ const fetchPublicFallback = async ({ repo, fetchImpl, timeoutMs }) => {
     }
   }
 
-  const atomRes = await fetchWithTimeout(
-    `https://github.com/${repo}/tags.atom`,
-    { fetchImpl, timeoutMs, headers: { 'User-Agent': 'chunked-write-guard-updater' } },
-  );
-  if (!atomRes.ok) {
-    throw classifyHttpError(atomRes.status, '读取公开标签订阅');
+  if (!result) {
+    const atomRes = await fetchWithTimeout(
+      `https://github.com/${repo}/tags.atom`,
+      { fetchImpl, timeoutMs, headers: { 'User-Agent': 'chunked-write-guard-updater' } },
+    );
+    if (!atomRes.ok) {
+      throw classifyHttpError(atomRes.status, '读取公开标签订阅');
+    }
+    const xml = await atomRes.text();
+    const tagNames = Array.from(xml.matchAll(/\/releases\/tag\/([^"'<\s]+)/g), (m) => m[1]);
+    result = pickHighestStableTag(repo, tagNames);
   }
-  const xml = await atomRes.text();
-  const tagNames = Array.from(xml.matchAll(/\/releases\/tag\/([^"'<\s]+)/g), (m) => m[1]);
-  return pickHighestStableTag(repo, tagNames);
+
+  result.releaseNotes = await fetchChangelogNotes({
+    repo,
+    tagName: result.tagName,
+    version: result.version,
+    fetchImpl,
+    timeoutMs,
+  });
+  return result;
 };
 
 /**
@@ -450,14 +491,41 @@ const defaultSyncRules = async (targetDir) => {
   const presetsUrl = pathToFileURL(path.join(targetDir, 'scripts', 'presets.mjs')).href;
   const script = `import(${JSON.stringify(presetsUrl)}).then((m) => { const cur = m.readActivePresetState(); m.applyPreset(cur.presetId, { recoveryEnabled: cur.recoveryEnabled }); })`;
   await execFileAsync(process.execPath, ['-e', script], {
-    cwd: targetDir,
+    cwd: os.tmpdir(),
     timeout: 10_000,
     windowsHide: true,
   });
 };
 
+const collectRuntimeFiles = (rootDir) => {
+  const files = [];
+  const walk = (relPath) => {
+    const absPath = path.join(rootDir, relPath);
+    if (!fs.existsSync(absPath)) return;
+    const stat = fs.lstatSync(absPath);
+    if (stat.isFile()) {
+      files.push(relPath.split(path.sep).join('/'));
+      return;
+    }
+    if (stat.isDirectory()) {
+      for (const child of fs.readdirSync(absPath)) {
+        walk(path.join(relPath, child));
+      }
+    }
+  };
+  for (const entry of RUNTIME_ENTRIES) {
+    walk(entry);
+  }
+  return files.sort();
+};
+
+const copyFileInPlace = (srcPath, dstPath) => {
+  fs.mkdirSync(path.dirname(dstPath), { recursive: true });
+  fs.copyFileSync(srcPath, dstPath);
+};
+
 /**
- * 备份并原子替换插件运行时条目（保留 config/ 下的用户配置与统计日志），失败时自动回滚。
+ * 按文件级就地备份并替换插件运行时文件（永不删除稳定目录、不触碰 config/），失败时幂等回滚。
  * @param {string} sourceRoot - 已校验的新版本根目录
  * @param {string} targetDir - 本地已安装插件根目录
  * @param {string} backupDir - 临时备份目录
@@ -469,36 +537,36 @@ export const swapRuntimeEntries = async (sourceRoot, targetDir, backupDir, optio
   const onPhase = options.onPhase ?? (() => {});
 
   onPhase('backup');
+  const oldFiles = collectRuntimeFiles(targetDir);
+  const newFiles = collectRuntimeFiles(sourceRoot);
   fs.mkdirSync(backupDir, { recursive: true });
-  const existedEntries = [];
-  for (const entry of RUNTIME_ENTRIES) {
-    const targetPath = path.join(targetDir, entry);
-    if (fs.existsSync(targetPath)) {
-      fs.cpSync(targetPath, path.join(backupDir, entry), { recursive: true, force: true });
-      existedEntries.push(entry);
-    }
+  for (const relPath of oldFiles) {
+    copyFileInPlace(path.join(targetDir, relPath), path.join(backupDir, relPath));
   }
 
   onPhase('install');
+  const newKeySet = new Set(newFiles.map((item) => item.toLowerCase()));
+  const oldKeySet = new Set(oldFiles.map((item) => item.toLowerCase()));
   try {
-    for (const entry of RUNTIME_ENTRIES) {
-      const srcPath = path.join(sourceRoot, entry);
-      const dstPath = path.join(targetDir, entry);
-      const srcStat = fs.lstatSync(srcPath);
-      if (srcStat.isDirectory()) {
-        fs.rmSync(dstPath, { recursive: true, force: true });
+    // Windows 下宿主可能持有 sidecars/panel 等目录句柄，按文件就地覆写而不删除目录本身
+    for (const relPath of newFiles) {
+      copyFileInPlace(path.join(sourceRoot, relPath), path.join(targetDir, relPath));
+    }
+    for (const relPath of oldFiles) {
+      if (!newKeySet.has(relPath.toLowerCase())) {
+        fs.rmSync(path.join(targetDir, relPath), { force: true });
       }
-      fs.cpSync(srcPath, dstPath, { recursive: true, force: true });
     }
     await syncRules(targetDir);
   } catch (installErr) {
     onPhase('recover');
     try {
-      for (const entry of RUNTIME_ENTRIES) {
-        const dstPath = path.join(targetDir, entry);
-        fs.rmSync(dstPath, { recursive: true, force: true });
-        if (existedEntries.includes(entry)) {
-          fs.cpSync(path.join(backupDir, entry), dstPath, { recursive: true, force: true });
+      for (const relPath of oldFiles) {
+        copyFileInPlace(path.join(backupDir, relPath), path.join(targetDir, relPath));
+      }
+      for (const relPath of newFiles) {
+        if (!oldKeySet.has(relPath.toLowerCase())) {
+          fs.rmSync(path.join(targetDir, relPath), { force: true });
         }
       }
     } catch (rollbackErr) {
@@ -527,7 +595,7 @@ export class PluginUpdater {
     this.now = options.now ?? (() => Date.now());
     this.cooldownMs = options.cooldownMs ?? CHECK_COOLDOWN_MS;
     this.planTtlMs = options.planTtlMs ?? PLAN_TTL_MS;
-    this.reloadDelayMs = options.reloadDelayMs ?? 500;
+    this.reloadDelayMs = options.reloadDelayMs ?? 250;
 
     this.plan = null;
     this.lastCheckedAt = 0;
@@ -766,7 +834,7 @@ export class PluginUpdater {
         currentVersion: plan.version,
         latestVersion: plan.version,
         download: null,
-        message: `已更新至 v${plan.version}，请点击重新加载以启用新版本面板`,
+        message: `已更新至 v${plan.version}`,
         error: null,
       };
     } catch (err) {
