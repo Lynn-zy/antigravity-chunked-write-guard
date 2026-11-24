@@ -188,12 +188,12 @@ test('PluginUpdater end-to-end check, install, config preservation, and reload f
     const installedDir = path.join(tempDir, 'installed');
     copyRuntimeFixture(installedDir, '1.2.0');
 
-    // 预置用户的自定义档位、断流恢复开关与触发统计
+    // 预置用户的自定义档位、事后提醒开关与触发统计
     const configPath = path.join(installedDir, 'config', 'active-preset.json');
     const rulesPath = path.join(installedDir, 'rules', 'AGENTS.md');
     const eventsPath = path.join(installedDir, 'config', 'events.jsonl');
-    applyPreset('300', { configPath, rulesPath, recoveryEnabled: false });
-    recordTriggerEvent('deny', { eventsPath, timestamp: '2026-11-24T01:00:00.000Z' });
+    applyPreset('300', { configPath, rulesPath, reminderEnabled: false });
+    recordTriggerEvent('oversize', { eventsPath, timestamp: '2026-11-24T01:00:00.000Z' });
 
     const tarballPath = packTarballFixture(tempDir, 'antigravity-chunked-write-guard-v1.3.0', '1.3.0');
     const tarballBytes = fs.readFileSync(tarballPath);
@@ -275,11 +275,11 @@ test('PluginUpdater end-to-end check, install, config preservation, and reload f
     assert.equal(nextManifest.version, '1.3.0');
     const preserved = readActivePresetState({ configPath });
     assert.equal(preserved.presetId, '300');
-    assert.equal(preserved.recoveryEnabled, false);
-    assert.equal(readTriggerStats({ eventsPath }).denyCount, 1);
+    assert.equal(preserved.reminderEnabled, false);
+    assert.equal(readTriggerStats({ eventsPath }).oversizeCount, 1);
     const syncedRules = fs.readFileSync(rulesPath, 'utf8');
     assert.match(syncedRules, /300 行 · 稳妥档/);
-    assert.match(syncedRules, /断流恢复提示：已关闭/);
+    assert.match(syncedRules, /超限事后提醒：已关闭/);
 
     // 触发重载回调
     const reloading = updater.request({ action: 'reload' });
@@ -307,7 +307,7 @@ test('extractAndVerifyTarball rejects version mismatch and swapRuntimeEntries ro
     copyRuntimeFixture(installedDir, '1.2.0');
     copyRuntimeFixture(newSourceDir, '1.3.0');
     fs.mkdirSync(path.join(installedDir, 'config'), { recursive: true });
-    fs.writeFileSync(path.join(installedDir, 'config', 'events.jsonl'), '{"type":"deny"}\n', 'utf8');
+    fs.writeFileSync(path.join(installedDir, 'config', 'events.jsonl'), '{"type":"oversize"}\n', 'utf8');
 
     const phases = [];
     await assert.rejects(
@@ -328,7 +328,7 @@ test('extractAndVerifyTarball rejects version mismatch and swapRuntimeEntries ro
     assert.equal(restoredManifest.version, '1.2.0');
     assert.equal(
       fs.readFileSync(path.join(installedDir, 'config', 'events.jsonl'), 'utf8'),
-      '{"type":"deny"}\n',
+      '{"type":"oversize"}\n',
     );
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });

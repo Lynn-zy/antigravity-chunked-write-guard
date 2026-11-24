@@ -1,23 +1,23 @@
 {
   "chunked-write-guard": {
     "enabled": true,
-    "PreInvocation": [
-      {
-        "type": "command",
-        "command": "node ./scripts/write-guard-hook.mjs pre-invocation",
-        "timeout": 5
-      }
-    ],
-    "PreToolUse": [
+    "PostToolUse": [
       {
         "matcher": "write_file|edit_file",
         "hooks": [
           {
             "type": "command",
-            "command": "node ./scripts/write-guard-hook.mjs pre-tool-use",
+            "command": "node ./scripts/write-guard-hook.mjs post-tool-use",
             "timeout": 5
           }
         ]
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node ./scripts/write-guard-hook.mjs pre-invocation",
+        "timeout": 5
       }
     ]
   }

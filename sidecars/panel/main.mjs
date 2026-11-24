@@ -7,7 +7,7 @@ import {
   buildPanelState,
   handleResetStats,
   handleSetPreset,
-  handleSetRecovery,
+  handleSetReminder,
   readChangelog,
 } from './panel-logic.mjs';
 import { PluginUpdater } from './updater.mjs';
@@ -79,9 +79,9 @@ const start = async () => {
   );
 
   app.api(
-    '/api/recovery',
+    '/api/reminder',
     (data) => {
-      const result = handleSetRecovery(data);
+      const result = handleSetReminder(data);
       return result.ok ? result.state : jsonErrorResponse(Response, result.status, result.error);
     },
     'POST',

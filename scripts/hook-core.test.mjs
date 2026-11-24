@@ -7,9 +7,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   GUARD_CONFIG,
-  detectRecentStreamInterruption,
+  handlePostToolUse,
   handlePreInvocation,
-  handlePreToolUse,
   measureText,
 } from './hook-core.mjs';
 import {
@@ -30,7 +29,7 @@ import {
   buildPanelState,
   handleResetStats,
   handleSetPreset,
-  handleSetRecovery,
+  handleSetReminder,
   readChangelog,
 } from '../sidecars/panel/panel-logic.mjs';
 
@@ -46,15 +45,10 @@ const createTempWorkspace = () => {
     tempDir,
     configPath: path.join(tempDir, 'active-preset.json'),
     rulesPath: path.join(tempDir, 'AGENTS.md'),
-    transcriptPath: path.join(tempDir, 'transcript.jsonl'),
     eventsPath: path.join(tempDir, 'events.jsonl'),
+    pendingDir: path.join(tempDir, 'pending'),
     cleanup: () => fs.rmSync(tempDir, { recursive: true, force: true }),
   };
-};
-
-const writeTranscript = (filePath, entries) => {
-  const body = entries.map((item) => JSON.stringify(item)).join('\n') + '\n';
-  fs.writeFileSync(filePath, body, 'utf8');
 };
 
 test('measureText accurately counts lines and UTF-8 bytes', () => {
@@ -71,87 +65,117 @@ test('default preset is 500 and preset order is 700 / 500 / 300', () => {
   assert.equal(DEFAULT_PRESET_ID, '500');
   assert.deepEqual(PRESET_ORDER, ['700', '500', '300']);
   assert.equal(GUARD_CONFIG.softTargetLines, 500);
-  assert.equal(GUARD_CONFIG.maxWriteLines, 800);
-  assert.equal(GUARD_CONFIG.maxWriteBytes, 48 * 1024);
-  assert.equal(GUARD_CONFIG.recoveryTargetLines, 300);
+  assert.equal(GUARD_CONFIG.warnWriteLines, 800);
+  assert.equal(GUARD_CONFIG.warnWriteBytes, 48 * 1024);
+  assert.equal(GUARD_CONFIG.warnEditCombinedLines, 900);
+  assert.equal(GUARD_CONFIG.warnEditCombinedBytes, 56 * 1024);
 });
 
-test('PreToolUse allows and denies at exact 500-preset boundaries (800 lines / 48 KB)', () => {
-  const config = getPresetConfig('500');
-
-  const atLineLimit = handlePreToolUse(
-    {
-      toolCall: {
-        name: 'write_file',
-        args: { Path: '/tmp/ok.js', Content: makeLines(800) },
-      },
-    },
-    { config },
-  );
-  assert.equal(atLineLimit.decision, 'allow');
-
-  const atByteLimit = handlePreToolUse(
-    {
-      toolCall: {
-        name: 'write_file',
-        args: { Path: '/tmp/ok.txt', Content: 'a'.repeat(48 * 1024) },
-      },
-    },
-    { config },
-  );
-  assert.equal(atByteLimit.decision, 'allow');
-
-  const overLines = handlePreToolUse(
-    {
-      toolCall: {
-        name: 'write_file',
-        args: { Path: '/tmp/huge.html', Content: makeLines(801) },
-      },
-    },
-    { config },
-  );
-  assert.equal(overLines.decision, 'deny');
-  assert.match(overLines.reason, /801 行/);
-  assert.match(overLines.reason, /≤ 500 行/);
-
-  const overBytes = handlePreToolUse(
-    {
-      toolCall: {
-        name: 'write_file',
-        args: { Path: '/tmp/minified.js', Content: 'x'.repeat(48 * 1024 + 1) },
-      },
-    },
-    { config },
-  );
-  assert.equal(overBytes.decision, 'deny');
-  assert.match(overBytes.reason, /48\.0 KB/);
-});
-
-test('switching presets dynamically changes PreToolUse thresholds and syncs AGENTS.md', () => {
+test('PostToolUse detects oversize writes at exact 500-preset boundaries and queues reminder', () => {
   const ws = createTempWorkspace();
   try {
-    // 1. 切至 300 档（硬兜底 500 行）
+    const config = getPresetConfig('500');
+    const opts = { config, pendingDir: ws.pendingDir, now: () => 1_000_000 };
+
+    // 刚好在行数与字节警戒线上，不触发超限
+    const atLineLimit = handlePostToolUse(
+      {
+        conversationId: 'conv-boundary',
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/tmp/ok.js', Content: makeLines(800) },
+        },
+      },
+      opts,
+    );
+    assert.equal(atLineLimit.oversize, false);
+    assert.equal(atLineLimit.queued, false);
+
+    const atByteLimit = handlePostToolUse(
+      {
+        conversationId: 'conv-boundary',
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/tmp/ok.txt', Content: 'a'.repeat(48 * 1024) },
+        },
+      },
+      opts,
+    );
+    assert.equal(atByteLimit.oversize, false);
+
+    // 超过行数警戒线 -> 标记超限并排队事后提醒
+    const overLines = handlePostToolUse(
+      {
+        conversationId: 'conv-boundary',
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/tmp/huge.html', Content: makeLines(801) },
+        },
+      },
+      opts,
+    );
+    assert.equal(overLines.oversize, true);
+    assert.equal(overLines.queued, true);
+    assert.equal(overLines.notice.lines, 801);
+
+    const injected = handlePreInvocation({ conversationId: 'conv-boundary' }, opts);
+    assert.equal(Array.isArray(injected.injectSteps), true);
+    const msg = injected.injectSteps[0].systemMessage.systemMessage;
+    assert.match(msg, /已放行落盘/);
+    assert.match(msg, /801 行/);
+    assert.match(msg, /≤ 500 行/);
+
+    // 消费一次后再次进入 PreInvocation 不再重复注入
+    assert.deepEqual(handlePreInvocation({ conversationId: 'conv-boundary' }, opts), {});
+
+    // 超过字节警戒线同样触发
+    const overBytes = handlePostToolUse(
+      {
+        conversationId: 'conv-bytes',
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/tmp/minified.js', Content: 'x'.repeat(48 * 1024 + 1) },
+        },
+      },
+      opts,
+    );
+    assert.equal(overBytes.oversize, true);
+    const bytesMsg =
+      handlePreInvocation({ conversationId: 'conv-bytes' }, opts).injectSteps[0].systemMessage
+        .systemMessage;
+    assert.match(bytesMsg, /48\.0 KB/);
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test('switching presets dynamically updates PostToolUse thresholds and syncs AGENTS.md', () => {
+  const ws = createTempWorkspace();
+  try {
+    // 1. 切至 300 档（警戒线 500 行 / 28 KB）
     const res300 = handleSetPreset(
       { presetId: '300' },
       { configPath: ws.configPath, rulesPath: ws.rulesPath },
     );
     assert.equal(res300.ok, true);
     assert.equal(res300.state.presetId, '300');
-    assert.match(fs.readFileSync(ws.rulesPath, 'utf8'), /单次写入目标 ≤ 300 行/);
-    assert.match(fs.readFileSync(ws.rulesPath, 'utf8'), /\*\*500 行\*\*或 \*\*28 KB\*\*/);
+    const rule300 = fs.readFileSync(ws.rulesPath, 'utf8');
+    assert.match(rule300, /单次写入目标 ≤ 300 行/);
+    assert.match(rule300, /\*\*500 行\*\*或 \*\*28 KB\*\*/);
 
-    const denyAt550 = handlePreToolUse(
+    const warnAt550 = handlePostToolUse(
       {
+        conversationId: 'conv-switch',
         toolCall: {
           name: 'write_file',
           args: { Path: '/tmp/mid.html', Content: makeLines(550) },
         },
       },
-      { configPath: ws.configPath },
+      { configPath: ws.configPath, pendingDir: ws.pendingDir },
     );
-    assert.equal(denyAt550.decision, 'deny');
+    assert.equal(warnAt550.oversize, true);
 
-    // 2. 切至 700 档（硬兜底 1100 行）：同一份 550 行和 1050 行都直接放行，1101 行拦截
+    // 2. 切至 700 档（警戒线 1100 行 / 64 KB）：1050 行不超限，1101 行触发超限
     const res700 = handleSetPreset(
       { presetId: '700' },
       { configPath: ws.configPath, rulesPath: ws.rulesPath },
@@ -159,29 +183,145 @@ test('switching presets dynamically changes PreToolUse thresholds and syncs AGEN
     assert.equal(res700.ok, true);
     assert.equal(res700.state.presetId, '700');
     assert.match(fs.readFileSync(ws.rulesPath, 'utf8'), /单次写入目标 ≤ 700 行/);
-    assert.match(fs.readFileSync(ws.rulesPath, 'utf8'), /≤ 400 行/);
 
-    const allowAt1050 = handlePreToolUse(
+    const okAt1050 = handlePostToolUse(
       {
+        conversationId: 'conv-switch-700',
         toolCall: {
           name: 'write_file',
           args: { Path: '/tmp/large.html', Content: makeLines(1050) },
         },
       },
-      { configPath: ws.configPath },
+      { configPath: ws.configPath, pendingDir: ws.pendingDir },
     );
-    assert.equal(allowAt1050.decision, 'allow');
+    assert.equal(okAt1050.oversize, false);
 
-    const denyAt1101 = handlePreToolUse(
+    const warnAt1101 = handlePostToolUse(
       {
+        conversationId: 'conv-switch-700',
         toolCall: {
           name: 'write_file',
           args: { Path: '/tmp/huge.html', Content: makeLines(1101) },
         },
       },
-      { configPath: ws.configPath },
+      { configPath: ws.configPath, pendingDir: ws.pendingDir },
     );
-    assert.equal(denyAt1101.decision, 'deny');
+    assert.equal(warnAt1101.oversize, true);
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test('PostToolUse ignores failed tool calls, pure deletions, and handles Append and full-file edit_file', () => {
+  const ws = createTempWorkspace();
+  try {
+    const config = getPresetConfig('500');
+    const opts = { config, pendingDir: ws.pendingDir, now: () => 2_000_000 };
+
+    // 工具执行失败（未落盘）不记超限
+    const failedCall = handlePostToolUse(
+      {
+        conversationId: 'conv-edge',
+        error: 'target string not found',
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/tmp/a.ts', Target: makeLines(600), Replacement: makeLines(600) },
+        },
+      },
+      opts,
+    );
+    assert.equal(failedCall.oversize, false);
+
+    // 纯删除（Replacement 为空）不记超限
+    const pureDeletion = handlePostToolUse(
+      {
+        conversationId: 'conv-edge',
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/tmp/legacy.ts', Target: makeLines(1200), Replacement: '' },
+        },
+      },
+      opts,
+    );
+    assert.equal(pureDeletion.oversize, false);
+
+    // 合法合并行数（900 行以内）不记超限
+    const okCombined = handlePostToolUse(
+      {
+        conversationId: 'conv-edge',
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/tmp/ok-edit.ts', Target: makeLines(450), Replacement: makeLines(450) },
+        },
+      },
+      opts,
+    );
+    assert.equal(okCombined.oversize, false);
+
+    // Append 超限与全量覆盖式 edit_file 超限在同一会话中合并为一条提醒
+    const appendOver = handlePostToolUse(
+      {
+        conversationId: 'conv-edge',
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/tmp/proto.html', Append: true, Content: makeLines(850) },
+        },
+      },
+      opts,
+    );
+    assert.equal(appendOver.oversize, true);
+
+    const hugeCombined = handlePostToolUse(
+      {
+        conversationId: 'conv-edge',
+        toolCall: {
+          name: 'edit_file',
+          args: { Path: '/tmp/full.ts', Target: makeLines(500), Replacement: makeLines(450) },
+        },
+      },
+      opts,
+    );
+    assert.equal(hugeCombined.oversize, true);
+
+    // 另一会话不会串扰
+    assert.deepEqual(handlePreInvocation({ conversationId: 'conv-other' }, opts), {});
+
+    const merged = handlePreInvocation({ conversationId: 'conv-edge' }, opts);
+    assert.equal(merged.injectSteps.length, 1);
+    const text = merged.injectSteps[0].systemMessage.systemMessage;
+    assert.match(text, /2 次超限写入已放行落盘/);
+    assert.match(text, /write_file \(Append\)/);
+    assert.match(text, /Target \+ Replacement 合计 950 行/);
+    assert.match(text, /缩小 edit_file 的 Target 锚点范围/);
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test('PreInvocation drops expired pending notices and prunes stale files', () => {
+  const ws = createTempWorkspace();
+  try {
+    const config = getPresetConfig('500');
+    const t0 = 1_000_000;
+
+    handlePostToolUse(
+      {
+        conversationId: 'conv-expire',
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/tmp/old.ts', Content: makeLines(900) },
+        },
+      },
+      { config, pendingDir: ws.pendingDir, now: () => t0 },
+    );
+
+    // 超过 30 分钟 TTL 后应丢弃不注入，并清理待提醒文件
+    const afterTtl = handlePreInvocation(
+      { conversationId: 'conv-expire' },
+      { config, pendingDir: ws.pendingDir, now: () => t0 + 31 * 60 * 1000 },
+    );
+    assert.deepEqual(afterTtl, {});
+    assert.equal(fs.readdirSync(ws.pendingDir).length, 0);
   } finally {
     ws.cleanup();
   }
@@ -228,152 +368,53 @@ test('panel-logic rejects invalid presetId and exposes presets in 700/500/300 or
   }
 });
 
-test('PreToolUse handles Append, edit_file pure deletion, and full-file overwrite', () => {
-  const config = getPresetConfig('500');
-
-  const appendOver = handlePreToolUse(
-    {
-      toolCall: {
-        name: 'write_file',
-        args: { Path: '/tmp/proto.html', Append: true, Content: makeLines(850) },
-      },
-    },
-    { config },
-  );
-  assert.equal(appendOver.decision, 'deny');
-  assert.match(appendOver.reason, /write_file \(Append\)/);
-
-  const pureDeletion = handlePreToolUse(
-    {
-      toolCall: {
-        name: 'edit_file',
-        args: { Path: '/tmp/legacy.ts', Target: makeLines(1200), Replacement: '' },
-      },
-    },
-    { config },
-  );
-  assert.equal(pureDeletion.decision, 'allow');
-
-  const hugeCombined = handlePreToolUse(
-    {
-      toolCall: {
-        name: 'edit_file',
-        args: { Path: '/tmp/full.ts', Target: makeLines(500), Replacement: makeLines(450) },
-      },
-    },
-    { config },
-  );
-  assert.equal(hugeCombined.decision, 'deny');
-  assert.match(hugeCombined.reason, /全量覆盖式 edit_file/);
-  assert.match(hugeCombined.reason, /900 行/);
-
-  const okCombined = handlePreToolUse(
-    {
-      toolCall: {
-        name: 'edit_file',
-        args: { Path: '/tmp/ok-edit.ts', Target: makeLines(450), Replacement: makeLines(450) },
-      },
-    },
-    { config },
-  );
-  assert.equal(okCombined.decision, 'allow');
-});
-
-test('PreInvocation uses active preset recovery target and deduplicates injections', () => {
-  const ws = createTempWorkspace();
-  try {
-    applyPreset('700', { configPath: ws.configPath, rulesPath: ws.rulesPath });
-    writeTranscript(ws.transcriptPath, [
-      { step_index: 1, type: 'PLANNER_RESPONSE', content: '', tool_calls: [{ name: 'update_focus' }] },
-      { step_index: 2, type: 'ERROR_MESSAGE', content: 'Error: The stream was interrupted. Please continue.' },
-      { step_index: 3, type: 'PLANNER_RESPONSE', content: '', tool_calls: [] },
-      { step_index: 4, type: 'ERROR_MESSAGE', content: 'Error: The stream was interrupted. Please continue.' },
-      { step_index: 5, type: 'USER_INPUT', content: '<USER_REQUEST>continue</USER_REQUEST>' },
-    ]);
-
-    const out = handlePreInvocation(
-      { transcriptPath: ws.transcriptPath },
-      { configPath: ws.configPath },
-    );
-    assert.equal(Array.isArray(out.injectSteps), true);
-    const msg = out.injectSteps[0].systemMessage.systemMessage;
-    assert.match(msg, /已连续中断 2 次/);
-    assert.match(msg, /≤ 400 行/);
-
-    // 注入去重标记后不再重复注入
-    fs.appendFileSync(
-      ws.transcriptPath,
-      `${JSON.stringify({ step_index: 6, type: 'SYSTEM_MESSAGE', content: msg })}\n`,
-      'utf8',
-    );
-    assert.deepEqual(
-      handlePreInvocation({ transcriptPath: ws.transcriptPath }, { configPath: ws.configPath }),
-      {},
-    );
-  } finally {
-    ws.cleanup();
-  }
-});
-
-test('detectRecentStreamInterruption handles large transcript tail slicing safely', () => {
-  const ws = createTempWorkspace();
-  try {
-    const paddingEntries = Array.from({ length: 40 }, (_, i) => ({
-      step_index: i,
-      type: 'GENERIC',
-      content: `padding-${i}-${'z'.repeat(250)}`,
-    }));
-    writeTranscript(ws.transcriptPath, [
-      ...paddingEntries,
-      { step_index: 99, type: 'ERROR_MESSAGE', content: 'Error: The stream was interrupted.' },
-    ]);
-    const res = detectRecentStreamInterruption(ws.transcriptPath, { tailBytes: 512 });
-    assert.deepEqual(res, { interrupted: true, consecutiveInterrupts: 1 });
-  } finally {
-    ws.cleanup();
-  }
-});
-
 test('renderAgentsRule includes consistent metrics for every preset', () => {
   for (const id of PRESET_ORDER) {
     const rule = renderAgentsRule(PRESETS[id]);
     assert.match(rule, new RegExp(`≤ ${PRESETS[id].softTargetLines} 行`));
-    assert.match(rule, new RegExp(`\\*\\*${PRESETS[id].maxWriteLines} 行\\*\\*`));
-    assert.match(rule, new RegExp(`≤ ${PRESETS[id].recoveryTargetLines} 行`));
+    assert.match(rule, new RegExp(`\\*\\*${PRESETS[id].warnWriteLines} 行\\*\\*`));
+    assert.doesNotMatch(rule, /PreToolUse/);
+    assert.doesNotMatch(rule, /断流恢复/);
   }
 });
 
-test('stats module records deny/recovery events, skips corrupted lines, and resets cleanly', () => {
+test('stats module records oversize/reminder events, skips corrupted lines, and resets cleanly', () => {
   const ws = createTempWorkspace();
   try {
     assert.deepEqual(readTriggerStats({ eventsPath: ws.eventsPath }), {
-      denyCount: 0,
-      recoveryCount: 0,
+      oversizeCount: 0,
+      reminderCount: 0,
       lastTriggeredAt: null,
     });
 
     assert.equal(recordTriggerEvent('unknown', { eventsPath: ws.eventsPath }), false);
     assert.equal(
-      recordTriggerEvent('deny', { eventsPath: ws.eventsPath, timestamp: '2026-11-23T09:00:00.000Z' }),
+      recordTriggerEvent('oversize', {
+        eventsPath: ws.eventsPath,
+        timestamp: '2026-11-24T09:00:00.000Z',
+      }),
       true,
     );
     fs.appendFileSync(ws.eventsPath, '{corrupted json line\n', 'utf8');
     assert.equal(
-      recordTriggerEvent('recovery', { eventsPath: ws.eventsPath, timestamp: '2026-11-23T09:05:00.000Z' }),
+      recordTriggerEvent('reminder', {
+        eventsPath: ws.eventsPath,
+        timestamp: '2026-11-24T09:05:00.000Z',
+      }),
       true,
     );
 
     assert.deepEqual(readTriggerStats({ eventsPath: ws.eventsPath }), {
-      denyCount: 1,
-      recoveryCount: 1,
-      lastTriggeredAt: '2026-11-23T09:05:00.000Z',
+      oversizeCount: 1,
+      reminderCount: 1,
+      lastTriggeredAt: '2026-11-24T09:05:00.000Z',
     });
 
     const resetOnce = handleResetStats({ configPath: ws.configPath, eventsPath: ws.eventsPath });
     assert.equal(resetOnce.changed, true);
     assert.deepEqual(resetOnce.state.stats, {
-      denyCount: 0,
-      recoveryCount: 0,
+      oversizeCount: 0,
+      reminderCount: 0,
       lastTriggeredAt: null,
     });
 
@@ -381,8 +422,8 @@ test('stats module records deny/recovery events, skips corrupted lines, and rese
     assert.equal(resetAgain.changed, false);
     resetTriggerStats({ eventsPath: ws.eventsPath });
     assert.deepEqual(readTriggerStats({ eventsPath: ws.eventsPath }), {
-      denyCount: 0,
-      recoveryCount: 0,
+      oversizeCount: 0,
+      reminderCount: 0,
       lastTriggeredAt: null,
     });
   } finally {
@@ -390,127 +431,167 @@ test('stats module records deny/recovery events, skips corrupted lines, and rese
   }
 });
 
-test('CLI entrypoint records only deny/recovery events and fails open on invalid JSON', () => {
+test('CLI entrypoint runs post-tool-use -> pre-invocation loop, records stats, and fails open', () => {
   const ws = createTempWorkspace();
-  const env = { ...process.env, CHUNKED_WRITE_GUARD_EVENTS_PATH: ws.eventsPath };
+  const env = {
+    ...process.env,
+    CHUNKED_WRITE_GUARD_EVENTS_PATH: ws.eventsPath,
+    CHUNKED_WRITE_GUARD_PENDING_DIR: ws.pendingDir,
+  };
   try {
-    // 正常放行不写入统计日志
-    const allowRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
+    // 1. 正常小文件写入：无统计写入，下一轮 PreInvocation 返回 {}
+    const smallRun = spawnSync(process.execPath, [HOOK_ENTRY, 'post-tool-use'], {
       input: JSON.stringify({
+        conversationId: 'conv-cli',
         toolCall: { name: 'write_file', args: { Path: '/tmp/small.js', Content: makeLines(10) } },
       }),
       env,
       encoding: 'utf8',
     });
-    assert.equal(allowRun.status, 0);
-    assert.equal(JSON.parse(allowRun.stdout).decision, 'allow');
+    assert.equal(smallRun.status, 0);
+    assert.deepEqual(JSON.parse(smallRun.stdout), {});
     assert.equal(fs.existsSync(ws.eventsPath), false);
 
-    // 超限拦截写入 1 条 deny
-    const denyRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
+    // 2. 超限大文件写入：输出 {} 不阻断落盘，同时记录 oversize 并排队
+    const bigRun = spawnSync(process.execPath, [HOOK_ENTRY, 'post-tool-use'], {
       input: JSON.stringify({
+        conversationId: 'conv-cli',
         toolCall: { name: 'write_file', args: { Path: '/tmp/big.html', Content: makeLines(1200) } },
       }),
       env,
       encoding: 'utf8',
     });
-    assert.equal(denyRun.status, 0);
-    assert.equal(JSON.parse(denyRun.stdout).decision, 'deny');
+    assert.equal(bigRun.status, 0);
+    assert.deepEqual(JSON.parse(bigRun.stdout), {});
 
-    // 断流恢复写入 1 条 recovery
-    writeTranscript(ws.transcriptPath, [
-      { step_index: 1, type: 'ERROR_MESSAGE', content: 'Error: The stream was interrupted.' },
-    ]);
-    const recRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-invocation'], {
-      input: JSON.stringify({ transcriptPath: ws.transcriptPath }),
+    // 3. 下一轮 PreInvocation 消费提醒并记录 1 条 reminder
+    const preRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-invocation'], {
+      input: JSON.stringify({ conversationId: 'conv-cli' }),
       env,
       encoding: 'utf8',
     });
-    assert.equal(recRun.status, 0);
-    assert.equal(Array.isArray(JSON.parse(recRun.stdout).injectSteps), true);
+    assert.equal(preRun.status, 0);
+    const preOut = JSON.parse(preRun.stdout);
+    assert.equal(Array.isArray(preOut.injectSteps), true);
+    assert.match(preOut.injectSteps[0].systemMessage.systemMessage, /1200 行/);
+
+    // 4. 再次调用 PreInvocation 返回 {}（去重生效）
+    const preAgain = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-invocation'], {
+      input: JSON.stringify({ conversationId: 'conv-cli' }),
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(preAgain.status, 0);
+    assert.deepEqual(JSON.parse(preAgain.stdout), {});
 
     const stats = readTriggerStats({ eventsPath: ws.eventsPath });
-    assert.equal(stats.denyCount, 1);
-    assert.equal(stats.recoveryCount, 1);
+    assert.equal(stats.oversizeCount, 1);
+    assert.equal(stats.reminderCount, 1);
     assert.equal(typeof stats.lastTriggeredAt, 'string');
 
-    const malformedRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
+    // 5. 非法 JSON 自动 fail-open 输出 {}
+    const malformedRun = spawnSync(process.execPath, [HOOK_ENTRY, 'post-tool-use'], {
       input: '{invalid json',
       env,
       encoding: 'utf8',
     });
     assert.equal(malformedRun.status, 0);
-    assert.deepEqual(JSON.parse(malformedRun.stdout), { decision: 'allow' });
+    assert.deepEqual(JSON.parse(malformedRun.stdout), {});
   } finally {
     ws.cleanup();
   }
 });
 
-test('recovery toggle disables PreInvocation injection, updates AGENTS.md, and survives preset switches', () => {
+test('reminder toggle controls context injection, updates AGENTS.md, and survives preset switches', () => {
   const ws = createTempWorkspace();
   try {
     const initial = buildPanelState({ configPath: ws.configPath, eventsPath: ws.eventsPath });
-    assert.equal(initial.recoveryEnabled, true);
+    assert.equal(initial.reminderEnabled, true);
     assert.match(initial.version, /^\d+\.\d+\.\d+$/);
 
-    const invalid = handleSetRecovery(
+    const invalid = handleSetReminder(
       { enabled: 'no' },
       { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
     );
     assert.equal(invalid.ok, false);
     assert.equal(invalid.status, 400);
 
-    const turnedOff = handleSetRecovery(
+    const turnedOff = handleSetReminder(
       { enabled: false },
       { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
     );
     assert.equal(turnedOff.ok, true);
     assert.equal(turnedOff.changed, true);
-    assert.equal(turnedOff.state.recoveryEnabled, false);
+    assert.equal(turnedOff.state.reminderEnabled, false);
     const rulesOff = fs.readFileSync(ws.rulesPath, 'utf8');
-    assert.match(rulesOff, /断流恢复提示：已关闭/);
-    assert.doesNotMatch(rulesOff, /收到断流恢复提示时/);
+    assert.match(rulesOff, /超限事后提醒：已关闭/);
+    assert.doesNotMatch(rulesOff, /超限检测与事后提醒/);
 
     // 重复提交相同开关状态时短路跳过写盘
-    const repeatOff = handleSetRecovery(
+    const repeatOff = handleSetReminder(
       { enabled: false },
       { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
     );
     assert.equal(repeatOff.ok, true);
     assert.equal(repeatOff.changed, false);
 
-    // 断流后关闭状态绝不向模型上下文注入提醒
-    writeTranscript(ws.transcriptPath, [
-      { step_index: 1, type: 'ERROR_MESSAGE', content: 'Error: The stream was interrupted.' },
-    ]);
+    // 关闭状态下：PostToolUse 仍上报 oversize（用于统计），但不排队、不向模型上下文注入
+    const detectedOff = handlePostToolUse(
+      {
+        conversationId: 'conv-toggle',
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/tmp/big.ts', Content: makeLines(950) },
+        },
+      },
+      { configPath: ws.configPath, pendingDir: ws.pendingDir },
+    );
+    assert.equal(detectedOff.oversize, true);
+    assert.equal(detectedOff.queued, false);
     assert.deepEqual(
-      handlePreInvocation({ transcriptPath: ws.transcriptPath }, { configPath: ws.configPath }),
+      handlePreInvocation(
+        { conversationId: 'conv-toggle' },
+        { configPath: ws.configPath, pendingDir: ws.pendingDir },
+      ),
       {},
     );
 
-    // 切换档位应保留已关闭的断流恢复开关
+    // 切换档位应保留已关闭的提醒开关
     const switched = handleSetPreset(
       { presetId: '300' },
       { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
     );
     assert.equal(switched.ok, true);
     assert.equal(switched.state.presetId, '300');
-    assert.equal(switched.state.recoveryEnabled, false);
-    assert.doesNotMatch(fs.readFileSync(ws.rulesPath, 'utf8'), /收到断流恢复提示时/);
+    assert.equal(switched.state.reminderEnabled, false);
+    assert.doesNotMatch(fs.readFileSync(ws.rulesPath, 'utf8'), /超限检测与事后提醒/);
 
-    // 重新开启后恢复正常注入
-    const turnedOn = handleSetRecovery(
+    // 重新开启后恢复正常提醒（按 300 档目标 ≤ 300 行提醒）
+    const turnedOn = handleSetReminder(
       { enabled: true },
       { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
     );
     assert.equal(turnedOn.ok, true);
-    assert.equal(turnedOn.state.recoveryEnabled, true);
+    assert.equal(turnedOn.state.reminderEnabled, true);
+    const detectedOn = handlePostToolUse(
+      {
+        conversationId: 'conv-toggle',
+        toolCall: {
+          name: 'write_file',
+          args: { Path: '/tmp/big2.ts', Content: makeLines(600) },
+        },
+      },
+      { configPath: ws.configPath, pendingDir: ws.pendingDir },
+    );
+    assert.equal(detectedOn.oversize, true);
+    assert.equal(detectedOn.queued, true);
+
     const out = handlePreInvocation(
-      { transcriptPath: ws.transcriptPath },
-      { configPath: ws.configPath },
+      { conversationId: 'conv-toggle' },
+      { configPath: ws.configPath, pendingDir: ws.pendingDir },
     );
     assert.equal(Array.isArray(out.injectSteps), true);
-    assert.match(out.injectSteps[0].systemMessage.systemMessage, /≤ 200 行/);
+    assert.match(out.injectSteps[0].systemMessage.systemMessage, /≤ 300 行/);
 
     // 读取本地变更日志：文件存在返回内容，缺失时 fail-open 返回空字符串
     const changelog = readChangelog();
@@ -518,6 +599,27 @@ test('recovery toggle disables PreInvocation injection, updates AGENTS.md, and s
     assert.match(changelog.markdown, /## \[1\.3\.0\]/);
     const missing = readChangelog({ changelogPath: path.join(ws.tempDir, 'MISSING.md') });
     assert.equal(missing.markdown, '');
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test('applyPreset falls back reminderEnabled to true when reading legacy config without reminderEnabled', () => {
+  const ws = createTempWorkspace();
+  try {
+    fs.writeFileSync(
+      ws.configPath,
+      `${JSON.stringify({ presetId: '700', updatedAt: '2026-11-23T00:00:00.000Z' })}\n`,
+      'utf8',
+    );
+    const state = readActivePresetState({ configPath: ws.configPath });
+    assert.equal(state.presetId, '700');
+    assert.equal(state.reminderEnabled, true);
+    const applied = applyPreset(state.presetId, {
+      configPath: ws.configPath,
+      rulesPath: ws.rulesPath,
+    });
+    assert.equal(applied.reminderEnabled, true);
   } finally {
     ws.cleanup();
   }

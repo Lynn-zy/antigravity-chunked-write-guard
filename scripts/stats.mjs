@@ -6,7 +6,7 @@ const SCRIPTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = path.resolve(SCRIPTS_DIR, '..');
 const DEFAULT_EVENTS_PATH = path.join(PLUGIN_ROOT, 'config', 'events.jsonl');
 
-const VALID_EVENT_TYPES = new Set(['deny', 'recovery']);
+const VALID_EVENT_TYPES = new Set(['oversize', 'reminder']);
 
 const resolveEventsPath = (options) =>
   options?.eventsPath ||
@@ -14,8 +14,8 @@ const resolveEventsPath = (options) =>
   DEFAULT_EVENTS_PATH;
 
 /**
- * 追加记录一次 Hook 异常触发事件（单行 JSONL，写失败自动静默跳过）。
- * @param {'deny' | 'recovery'} type - 触发类型（超限拦截或断流恢复）
+ * 追加记录一次超限检测或事后提醒事件（单行 JSONL，写失败自动静默跳过）。
+ * @param {'oversize' | 'reminder'} type - 事件类型（超限落盘或事后提醒）
  * @param {{ eventsPath?: string, timestamp?: string }} [options] - 可选路径与时间戳覆盖
  * @returns {boolean} 是否写入成功
  */
@@ -36,9 +36,9 @@ export const recordTriggerEvent = (type, options = {}) => {
 };
 
 /**
- * 读取累计触发统计（超限拦截次数、断流恢复次数与最近一次触发时间）。
+ * 读取累计触发统计（超限落盘次数、事后提醒次数与最近一次触发时间）。
  * @param {{ eventsPath?: string }} [options] - 可选事件日志路径覆盖
- * @returns {{ denyCount: number, recoveryCount: number, lastTriggeredAt: string | null }} 统计结果
+ * @returns {{ oversizeCount: number, reminderCount: number, lastTriggeredAt: string | null }} 统计结果
  */
 export const readTriggerStats = (options = {}) => {
   const eventsPath = resolveEventsPath(options);
@@ -46,11 +46,11 @@ export const readTriggerStats = (options = {}) => {
   try {
     raw = fs.readFileSync(eventsPath, 'utf8');
   } catch {
-    return { denyCount: 0, recoveryCount: 0, lastTriggeredAt: null };
+    return { oversizeCount: 0, reminderCount: 0, lastTriggeredAt: null };
   }
 
-  let denyCount = 0;
-  let recoveryCount = 0;
+  let oversizeCount = 0;
+  let reminderCount = 0;
   let lastTriggeredAt = null;
 
   for (const line of raw.split(/\r?\n/)) {
@@ -67,10 +67,10 @@ export const readTriggerStats = (options = {}) => {
     if (!entry || typeof entry !== 'object') {
       continue;
     }
-    if (entry.type === 'deny') {
-      denyCount += 1;
-    } else if (entry.type === 'recovery') {
-      recoveryCount += 1;
+    if (entry.type === 'oversize') {
+      oversizeCount += 1;
+    } else if (entry.type === 'reminder') {
+      reminderCount += 1;
     } else {
       continue;
     }
@@ -79,7 +79,7 @@ export const readTriggerStats = (options = {}) => {
     }
   }
 
-  return { denyCount, recoveryCount, lastTriggeredAt };
+  return { oversizeCount, reminderCount, lastTriggeredAt };
 };
 
 /**

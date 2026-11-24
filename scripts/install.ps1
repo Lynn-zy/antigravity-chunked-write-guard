@@ -61,7 +61,7 @@ foreach ($RelPath in $FilesToCopy) {
 # 按当前持久化档位与开关状态（若首次安装则初始化默认 500 档）同步生成 AGENTS.md
 Push-Location $TargetDir
 try {
-    $Result = node -e "import('./scripts/presets.mjs').then((m) => { const cur = m.readActivePresetState(); const applied = m.applyPreset(cur.presetId, { recoveryEnabled: cur.recoveryEnabled }); console.log(applied.config.label); })"
+    $Result = node -e "import('./scripts/presets.mjs').then((m) => { const cur = m.readActivePresetState(); const applied = m.applyPreset(cur.presetId, { reminderEnabled: cur.reminderEnabled }); console.log(applied.config.label); })"
     Write-Host "[chunked-write-guard] 安装/更新完成：$TargetDir" -ForegroundColor Green
     Write-Host "[chunked-write-guard] 当前生效档位：$Result" -ForegroundColor Cyan
 } finally {

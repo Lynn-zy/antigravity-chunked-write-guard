@@ -1,4 +1,4 @@
-import { handlePreInvocation, handlePreToolUse } from './hook-core.mjs';
+import { handlePostToolUse, handlePreInvocation } from './hook-core.mjs';
 import { recordTriggerEvent } from './stats.mjs';
 
 const readStdinAsync = (timeoutMs = 2_000) =>
@@ -37,19 +37,19 @@ const main = async () => {
     payload = {};
   }
 
-  if (mode === 'pre-invocation') {
-    const out = handlePreInvocation(payload);
-    if (Array.isArray(out.injectSteps) && out.injectSteps.length > 0) {
-      recordTriggerEvent('recovery');
+  if (mode === 'post-tool-use') {
+    const result = handlePostToolUse(payload);
+    if (result.oversize) {
+      recordTriggerEvent('oversize');
     }
-    process.stdout.write(`${JSON.stringify(out)}\n`);
+    process.stdout.write('{}\n');
     return;
   }
 
-  if (mode === 'pre-tool-use') {
-    const out = handlePreToolUse(payload);
-    if (out.decision === 'deny') {
-      recordTriggerEvent('deny');
+  if (mode === 'pre-invocation') {
+    const out = handlePreInvocation(payload);
+    if (Array.isArray(out.injectSteps) && out.injectSteps.length > 0) {
+      recordTriggerEvent('reminder');
     }
     process.stdout.write(`${JSON.stringify(out)}\n`);
     return;
@@ -60,6 +60,5 @@ const main = async () => {
 
 main().catch(() => {
   // fail-open：Hook 自身异常不能阻断正常对话流程
-  const mode = process.argv[2];
-  process.stdout.write(mode === 'pre-tool-use' ? '{"decision":"allow"}\n' : '{}\n');
+  process.stdout.write('{}\n');
 });

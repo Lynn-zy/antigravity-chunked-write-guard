@@ -255,8 +255,16 @@
       font-variant-numeric: tabular-nums;
     }
 
-    .metric-cell.dimmed {
-      opacity: 0.55;
+    .metric-cell.full {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .metric-cell.full .metric-label {
+      margin-bottom: 0;
     }
 
     .toggle-card {
@@ -817,23 +825,23 @@
       </div>
       <span id="activeBadge" class="badge">加载中…</span>
     </div>
-    <p class="subtitle">点击下方档位切换单次写入限制。Hook 立即生效，规则文件同步更新。</p>
+    <p class="subtitle">点击下方档位切换单次写入目标与超限警戒线。Hook 不阻断落盘，规则文件同步更新。</p>
 
     <div id="presetList" class="preset-list" role="group" aria-label="写入阈值档位"></div>
 
     <div class="toggle-card">
       <div class="toggle-info">
-        <div class="toggle-title">断流恢复提示</div>
-        <p id="recoveryDesc" class="toggle-desc">断流后注入一次降档续写提示（会进入上下文）</p>
+        <div class="toggle-title">超限事后提醒</div>
+        <p id="reminderDesc" class="toggle-desc">超限写入落盘后，下一轮提醒模型按当前档位分段写入</p>
       </div>
-      <button id="recoveryToggle" type="button" role="switch" aria-checked="true" aria-label="断流恢复提示开关" class="switch-btn"></button>
+      <button id="reminderToggle" type="button" role="switch" aria-checked="true" aria-label="超限事后提醒开关" class="switch-btn"></button>
     </div>
 
     <div class="status-bar">
       <div class="stats-row">
         <div class="stats-counters">
-          <span class="stat-item">超限拦截 <strong id="denyCount" class="stat-num">0</strong></span>
-          <span class="stat-item">断流恢复 <strong id="recoveryCount" class="stat-num">0</strong></span>
+          <span class="stat-item">超限落盘 <strong id="oversizeCount" class="stat-num">0</strong></span>
+          <span class="stat-item">事后提醒 <strong id="reminderCount" class="stat-num">0</strong></span>
         </div>
         <button id="resetStatsBtn" type="button" class="reset-btn" disabled>清零</button>
       </div>
@@ -900,10 +908,10 @@
       const versionTagEl = document.getElementById('versionTag');
       const badgeEl = document.getElementById('activeBadge');
       const checkUpdateBtn = document.getElementById('checkUpdateBtn');
-      const recoveryToggle = document.getElementById('recoveryToggle');
-      const recoveryDescEl = document.getElementById('recoveryDesc');
-      const denyCountEl = document.getElementById('denyCount');
-      const recoveryCountEl = document.getElementById('recoveryCount');
+      const reminderToggle = document.getElementById('reminderToggle');
+      const reminderDescEl = document.getElementById('reminderDesc');
+      const oversizeCountEl = document.getElementById('oversizeCount');
+      const reminderCountEl = document.getElementById('reminderCount');
       const resetStatsBtn = document.getElementById('resetStatsBtn');
       const statusDotEl = document.getElementById('statusDot');
       const statusMsgEl = document.getElementById('statusMsg');
@@ -911,8 +919,8 @@
       let busy = false;
       let loading = false;
       let activePresetId = '';
-      let recoveryEnabled = true;
-      let lastStats = { denyCount: 0, recoveryCount: 0, lastTriggeredAt: null };
+      let reminderEnabled = true;
+      let lastStats = { oversizeCount: 0, reminderCount: 0, lastTriggeredAt: null };
       let statusKind = '';
 
       const apiFetch = (url, options = {}) => {
@@ -937,8 +945,9 @@
         for (const btn of listEl.querySelectorAll('button')) {
           btn.disabled = busy;
         }
-        recoveryToggle.disabled = busy;
-        resetStatsBtn.disabled = busy || (lastStats.denyCount === 0 && lastStats.recoveryCount === 0);
+        reminderToggle.disabled = busy;
+        resetStatsBtn.disabled =
+          busy || (lastStats.oversizeCount === 0 && lastStats.reminderCount === 0);
       };
 
       const setStatus = (text, kind = '') => {
@@ -955,25 +964,25 @@
       };
 
       const renderStats = (stats) => {
-        const deny = Number(stats?.denyCount ?? 0);
-        const recovery = Number(stats?.recoveryCount ?? 0);
+        const oversize = Number(stats?.oversizeCount ?? 0);
+        const reminder = Number(stats?.reminderCount ?? 0);
         lastStats = {
-          denyCount: deny,
-          recoveryCount: recovery,
+          oversizeCount: oversize,
+          reminderCount: reminder,
           lastTriggeredAt: stats?.lastTriggeredAt ?? null,
         };
-        denyCountEl.textContent = String(deny);
-        recoveryCountEl.textContent = String(recovery);
-        denyCountEl.className = deny > 0 ? 'stat-num nonzero' : 'stat-num';
-        recoveryCountEl.className = recovery > 0 ? 'stat-num nonzero' : 'stat-num';
+        oversizeCountEl.textContent = String(oversize);
+        reminderCountEl.textContent = String(reminder);
+        oversizeCountEl.className = oversize > 0 ? 'stat-num nonzero' : 'stat-num';
+        reminderCountEl.className = reminder > 0 ? 'stat-num nonzero' : 'stat-num';
       };
 
-      const renderRecoveryToggle = (enabled) => {
-        recoveryEnabled = Boolean(enabled);
-        recoveryToggle.setAttribute('aria-checked', String(recoveryEnabled));
-        recoveryDescEl.textContent = recoveryEnabled
-          ? '断流后注入一次降档续写提示（会进入上下文）'
-          : '已关闭，断流后不向模型上下文注入额外提醒';
+      const renderReminderToggle = (enabled) => {
+        reminderEnabled = Boolean(enabled);
+        reminderToggle.setAttribute('aria-checked', String(reminderEnabled));
+        reminderDescEl.textContent = reminderEnabled
+          ? '超限写入落盘后，下一轮提醒模型按当前档位分段写入'
+          : '已关闭，仅记录超限统计，不向模型上下文注入提醒';
       };
 
       const render = (state) => {
@@ -982,7 +991,7 @@
           versionTagEl.textContent = `v${state.version}`;
         }
         badgeEl.textContent = `当前：${state.presetId} 行档`;
-        renderRecoveryToggle(state.recoveryEnabled !== false);
+        renderReminderToggle(state.reminderEnabled !== false);
         renderStats(state.stats);
 
         listEl.innerHTML = '';
@@ -992,10 +1001,6 @@
           btn.type = 'button';
           btn.className = 'preset-card';
           btn.setAttribute('aria-pressed', String(isActive));
-          const recoveryMetricClass = recoveryEnabled ? 'metric-cell' : 'metric-cell dimmed';
-          const recoveryMetricText = recoveryEnabled
-            ? `≤ ${preset.recoveryTargetLines} 行`
-            : `≤ ${preset.recoveryTargetLines} 行 · 已关`;
           btn.innerHTML = `
             <div class="card-top">
               <span class="card-title">${preset.label}</span>
@@ -1008,16 +1013,12 @@
                 <span class="metric-val">≤ ${preset.softTargetLines} 行</span>
               </div>
               <div class="metric-cell">
-                <span class="metric-label">单次写入上限</span>
-                <span class="metric-val">${preset.maxWriteLines} 行 / ${preset.maxWriteKb} KB</span>
+                <span class="metric-label">单次写入警戒线</span>
+                <span class="metric-val">${preset.warnWriteLines} 行 / ${preset.warnWriteKb} KB</span>
               </div>
-              <div class="metric-cell">
-                <span class="metric-label">edit_file 合计上限</span>
-                <span class="metric-val">${preset.maxEditCombinedLines} 行 / ${preset.maxEditCombinedKb} KB</span>
-              </div>
-              <div class="${recoveryMetricClass}">
-                <span class="metric-label">断流恢复上限</span>
-                <span class="metric-val">${recoveryMetricText}</span>
+              <div class="metric-cell full">
+                <span class="metric-label">edit_file 合计警戒线</span>
+                <span class="metric-val">${preset.warnEditCombinedLines} 行 / ${preset.warnEditCombinedKb} KB</span>
               </div>
             </div>
           `;
@@ -1063,16 +1064,16 @@
         );
       };
 
-      const toggleRecovery = () => {
-        const nextEnabled = !recoveryEnabled;
+      const toggleReminder = () => {
+        const nextEnabled = !reminderEnabled;
         return runMutation(
-          nextEnabled ? '正在开启断流恢复提示…' : '正在关闭断流恢复提示…',
-          () => postJson('/api/recovery', { enabled: nextEnabled }),
+          nextEnabled ? '正在开启超限事后提醒…' : '正在关闭超限事后提醒…',
+          () => postJson('/api/reminder', { enabled: nextEnabled }),
           (state) =>
             setStatus(
-              state.recoveryEnabled
-                ? '已开启断流恢复提示（Hook 与 AGENTS.md 已同步）'
-                : '已关闭断流恢复提示（断流后不再向模型上下文注入提醒）',
+              state.reminderEnabled
+                ? '已开启超限事后提醒（Hook 与 AGENTS.md 已同步）'
+                : '已关闭超限事后提醒（超限落盘后仅统计，不注入上下文）',
               'ok',
             ),
           '设置失败',
@@ -1501,7 +1502,7 @@
         if (event.target === changelogDialog) closeChangelogDialog();
       });
 
-      recoveryToggle.addEventListener('click', toggleRecovery);
+      reminderToggle.addEventListener('click', toggleReminder);
       resetStatsBtn.addEventListener('click', resetStats);
       checkUpdateBtn.addEventListener('click', openUpdateDialog);
       updateCloseIcon.addEventListener('click', closeUpdateDialog);

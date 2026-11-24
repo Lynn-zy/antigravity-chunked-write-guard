@@ -69,6 +69,6 @@ for rel in "${FILES[@]}"; do
 done
 
 # 按当前持久化档位与开关状态（若首次安装则初始化默认 500 档）同步生成 AGENTS.md
-ACTIVE_LABEL="$(cd "${TARGET_DIR}" && node -e "import('./scripts/presets.mjs').then((m) => { const cur = m.readActivePresetState(); const applied = m.applyPreset(cur.presetId, { recoveryEnabled: cur.recoveryEnabled }); console.log(applied.config.label); })")"
+ACTIVE_LABEL="$(cd "${TARGET_DIR}" && node -e "import('./scripts/presets.mjs').then((m) => { const cur = m.readActivePresetState(); const applied = m.applyPreset(cur.presetId, { reminderEnabled: cur.reminderEnabled }); console.log(applied.config.label); })")"
 echo "[chunked-write-guard] 安装/更新完成：${TARGET_DIR}"
 echo "[chunked-write-guard] 当前生效档位：${ACTIVE_LABEL}"

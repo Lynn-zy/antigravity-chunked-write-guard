@@ -489,7 +489,7 @@ export const extractAndVerifyTarball = async (
 
 const defaultSyncRules = async (targetDir) => {
   const presetsUrl = pathToFileURL(path.join(targetDir, 'scripts', 'presets.mjs')).href;
-  const script = `import(${JSON.stringify(presetsUrl)}).then((m) => { const cur = m.readActivePresetState(); m.applyPreset(cur.presetId, { recoveryEnabled: cur.recoveryEnabled }); })`;
+  const script = `import(${JSON.stringify(presetsUrl)}).then((m) => { const cur = m.readActivePresetState(); m.applyPreset(cur.presetId, { reminderEnabled: cur.reminderEnabled }); })`;
   await execFileAsync(process.execPath, ['-e', script], {
     cwd: os.tmpdir(),
     timeout: 10_000,

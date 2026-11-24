@@ -7,7 +7,7 @@ import {
   PRESET_ORDER,
   applyPreset,
   readActivePresetState,
-  setRecoveryEnabled,
+  setReminderEnabled,
 } from '../../scripts/presets.mjs';
 import {
   readTriggerStats,
@@ -35,15 +35,14 @@ const formatPresetSummary = (preset) => ({
   label: preset.label,
   summary: preset.summary,
   softTargetLines: preset.softTargetLines,
-  recoveryTargetLines: preset.recoveryTargetLines,
-  maxWriteLines: preset.maxWriteLines,
-  maxWriteKb: Math.round(preset.maxWriteBytes / 1024),
-  maxEditCombinedLines: preset.maxEditCombinedLines,
-  maxEditCombinedKb: Math.round(preset.maxEditCombinedBytes / 1024),
+  warnWriteLines: preset.warnWriteLines,
+  warnWriteKb: Math.round(preset.warnWriteBytes / 1024),
+  warnEditCombinedLines: preset.warnEditCombinedLines,
+  warnEditCombinedKb: Math.round(preset.warnEditCombinedBytes / 1024),
 });
 
 /**
- * 构建侧边栏面板所需的状态、版本号、断流恢复开关与触发统计快照。
+ * 构建侧边栏面板所需的状态、版本号、超限事后提醒开关与触发统计快照。
  * @param {{ configPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
  * @returns {Record<string, unknown>} 面板展示状态 JSON
  */
@@ -54,7 +53,7 @@ export const buildPanelState = (options = {}) => {
   return {
     version: readPluginVersion(options.manifestPath),
     presetId: active.presetId,
-    recoveryEnabled: active.recoveryEnabled,
+    reminderEnabled: active.reminderEnabled,
     updatedAt: active.updatedAt,
     active: formatPresetSummary(active.config),
     presets: PRESET_ORDER.map((id) => formatPresetSummary(PRESETS[id])),
@@ -97,12 +96,12 @@ export const handleSetPreset = (body, options = {}) => {
 };
 
 /**
- * 校验面板提交的断流恢复开关请求，状态变化时持久化配置并同步规则文件。
+ * 校验面板提交的超限事后提醒开关请求，状态变化时持久化配置并同步规则文件。
  * @param {Record<string, unknown>} body - 客户端提交的 JSON 对象
  * @param {{ configPath?: string, rulesPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
  * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> } | { ok: false, status: number, error: string }} 执行结果
  */
-export const handleSetRecovery = (body, options = {}) => {
+export const handleSetReminder = (body, options = {}) => {
   if (typeof body?.enabled !== 'boolean') {
     return {
       ok: false,
@@ -112,7 +111,7 @@ export const handleSetRecovery = (body, options = {}) => {
   }
 
   const current = readActivePresetState({ configPath: options.configPath });
-  if (current.recoveryEnabled === body.enabled && current.updatedAt !== null) {
+  if (current.reminderEnabled === body.enabled && current.updatedAt !== null) {
     return {
       ok: true,
       changed: false,
@@ -120,7 +119,7 @@ export const handleSetRecovery = (body, options = {}) => {
     };
   }
 
-  setRecoveryEnabled(body.enabled, options);
+  setReminderEnabled(body.enabled, options);
   return {
     ok: true,
     changed: true,
@@ -135,7 +134,11 @@ export const handleSetRecovery = (body, options = {}) => {
  */
 export const handleResetStats = (options = {}) => {
   const current = readTriggerStats({ eventsPath: options.eventsPath });
-  if (current.denyCount === 0 && current.recoveryCount === 0 && current.lastTriggeredAt === null) {
+  if (
+    current.oversizeCount === 0 &&
+    current.reminderCount === 0 &&
+    current.lastTriggeredAt === null
+  ) {
     return {
       ok: true,
       changed: false,
