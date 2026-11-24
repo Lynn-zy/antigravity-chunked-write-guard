@@ -39,6 +39,7 @@ foreach ($Sub in $SubDirs) {
 $FilesToCopy = @(
     "plugin.json",
     "hooks.json",
+    "CHANGELOG.md",
     "assets\logo.svg",
     "rules\AGENTS.md",
     "scripts\presets.mjs",

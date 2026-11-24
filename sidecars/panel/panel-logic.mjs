@@ -15,7 +15,9 @@ import {
 } from '../../scripts/stats.mjs';
 
 const PANEL_DIR = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_MANIFEST_PATH = path.resolve(PANEL_DIR, '..', '..', 'plugin.json');
+const PLUGIN_ROOT = path.resolve(PANEL_DIR, '..', '..');
+const DEFAULT_MANIFEST_PATH = path.join(PLUGIN_ROOT, 'plugin.json');
+const DEFAULT_CHANGELOG_PATH = path.join(PLUGIN_ROOT, 'CHANGELOG.md');
 
 const readPluginVersion = (manifestPath = DEFAULT_MANIFEST_PATH) => {
   try {
@@ -146,5 +148,24 @@ export const handleResetStats = (options = {}) => {
     ok: true,
     changed: true,
     state: buildPanelState(options),
+  };
+};
+
+/**
+ * 读取插件根目录的 CHANGELOG.md 内容与当前版本号，文件缺失时返回空内容。
+ * @param {{ changelogPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
+ * @returns {{ version: string, markdown: string }} 版本号与原始 Markdown 变更日志
+ */
+export const readChangelog = (options = {}) => {
+  const changelogPath = options.changelogPath ?? DEFAULT_CHANGELOG_PATH;
+  let markdown = '';
+  try {
+    markdown = fs.readFileSync(changelogPath, 'utf8').replace(/\r\n/g, '\n').trim();
+  } catch {
+    markdown = '';
+  }
+  return {
+    version: readPluginVersion(options.manifestPath),
+    markdown,
   };
 };

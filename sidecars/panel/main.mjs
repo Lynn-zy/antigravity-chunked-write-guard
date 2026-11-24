@@ -8,6 +8,7 @@ import {
   handleResetStats,
   handleSetPreset,
   handleSetRecovery,
+  readChangelog,
 } from './panel-logic.mjs';
 import { PluginUpdater } from './updater.mjs';
 
@@ -65,6 +66,8 @@ const start = async () => {
   });
 
   app.api('/api/state', () => buildPanelState(), 'GET');
+
+  app.api('/api/changelog', () => readChangelog(), 'GET');
 
   app.api(
     '/api/preset',

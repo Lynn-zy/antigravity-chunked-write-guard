@@ -31,6 +31,7 @@ import {
   handleResetStats,
   handleSetPreset,
   handleSetRecovery,
+  readChangelog,
 } from '../sidecars/panel/panel-logic.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -510,6 +511,13 @@ test('recovery toggle disables PreInvocation injection, updates AGENTS.md, and s
     );
     assert.equal(Array.isArray(out.injectSteps), true);
     assert.match(out.injectSteps[0].systemMessage.systemMessage, /≤ 200 行/);
+
+    // 读取本地变更日志：文件存在返回内容，缺失时 fail-open 返回空字符串
+    const changelog = readChangelog();
+    assert.match(changelog.version, /^\d+\.\d+\.\d+$/);
+    assert.match(changelog.markdown, /## \[1\.3\.0\]/);
+    const missing = readChangelog({ changelogPath: path.join(ws.tempDir, 'MISSING.md') });
+    assert.equal(missing.markdown, '');
   } finally {
     ws.cleanup();
   }

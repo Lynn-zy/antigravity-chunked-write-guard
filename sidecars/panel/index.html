@@ -87,6 +87,7 @@
     .version-tag {
       padding: 2px 7px;
       border-radius: 999px;
+      font: inherit;
       font-size: 10.5px;
       line-height: 1.35;
       font-weight: 500;
@@ -94,6 +95,14 @@
       color: var(--wg-muted);
       border: 1px solid var(--wg-border);
       background: var(--wg-subtle);
+      cursor: pointer;
+      transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .version-tag:hover {
+      color: var(--wg-fg);
+      border-color: color-mix(in srgb, var(--wg-accent) 45%, var(--wg-border));
+      background: color-mix(in srgb, var(--wg-accent) 8%, transparent);
     }
 
     .badge {
@@ -427,6 +436,39 @@
       backdrop-filter: blur(4px);
     }
 
+    .update-dialog.compact-notice {
+      width: min(300px, calc(100vw - 28px));
+    }
+
+    .update-dialog.compact-notice .dialog-head,
+    .update-dialog.compact-notice .dialog-foot {
+      display: none;
+    }
+
+    .update-dialog.compact-notice .dialog-body {
+      padding: 24px 20px;
+      align-items: center;
+      text-align: center;
+    }
+
+    .update-dialog.compact-notice .update-hero {
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .update-dialog.compact-notice .update-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 18px;
+    }
+
+    .update-dialog.compact-notice .update-icon.spin::after {
+      width: 18px;
+      height: 18px;
+    }
+
     .dialog-head {
       display: flex;
       align-items: center;
@@ -609,23 +651,101 @@
       text-decoration: underline;
     }
 
-    .update-notes {
+    .md-notes {
       display: none;
       margin: 0;
-      padding: 8px 10px;
-      max-height: 140px;
+      padding: 12px 14px;
+      max-height: 220px;
       overflow: auto;
       border-radius: 8px;
       border: 1px solid var(--wg-border);
       background: var(--wg-subtle);
-      color: var(--wg-muted);
-      font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      white-space: pre-wrap;
+      color: color-mix(in srgb, var(--wg-fg) 84%, transparent);
+      font-size: 12.5px;
+      line-height: 1.65;
       word-break: break-word;
     }
 
-    .update-notes.show {
+    .md-notes.show {
       display: block;
+    }
+
+    #changelogDialog {
+      width: min(440px, calc(100vw - 24px));
+    }
+
+    #changelogDialog .dialog-title {
+      font-size: 14.5px;
+    }
+
+    #changelogDialog .dialog-hint {
+      font-size: 12px;
+    }
+
+    .md-notes.changelog-body {
+      display: block;
+      max-height: min(62vh, 420px);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .md-notes > :first-child {
+      margin-top: 0;
+    }
+
+    .md-notes > :last-child {
+      margin-bottom: 0;
+    }
+
+    .md-h2 {
+      margin: 14px 0 8px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid color-mix(in srgb, var(--wg-border) 75%, transparent);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--wg-accent);
+    }
+
+    .md-h3 {
+      margin: 10px 0 5px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--wg-fg);
+    }
+
+    .md-p {
+      margin: 5px 0;
+    }
+
+    .md-list {
+      margin: 5px 0;
+      padding-left: 18px;
+    }
+
+    .md-list li {
+      margin: 4px 0;
+    }
+
+    .md-code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--wg-fg) 10%, transparent);
+      color: var(--wg-fg);
+      font: 11.5px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .md-strong {
+      color: var(--wg-fg);
+      font-weight: 600;
+    }
+
+    .md-link {
+      color: var(--wg-accent);
+      text-decoration: none;
+    }
+
+    .md-link:hover {
+      text-decoration: underline;
     }
 
     .dialog-foot {
@@ -649,24 +769,39 @@
       margin-left: auto;
     }
 
-    .primary-btn {
+    .dialog-btn {
       padding: 5px 12px;
       border-radius: 8px;
-      border: 1px solid color-mix(in srgb, var(--wg-accent) 60%, transparent);
-      background: color-mix(in srgb, var(--wg-accent) 22%, transparent);
-      color: var(--wg-accent);
+      border: 1px solid var(--wg-border);
+      background: transparent;
+      color: var(--wg-muted);
       font: inherit;
       font-size: 11.5px;
-      font-weight: 600;
+      line-height: 1.4;
+      font-weight: 500;
+      white-space: nowrap;
       cursor: pointer;
-      transition: background 140ms ease;
+      transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
     }
 
-    .primary-btn:hover:not(:disabled) {
+    .dialog-btn:hover:not(:disabled) {
+      color: var(--wg-fg);
+      border-color: color-mix(in srgb, var(--wg-fg) 30%, var(--wg-border));
+      background: var(--wg-subtle);
+    }
+
+    .dialog-btn.primary {
+      border-color: color-mix(in srgb, var(--wg-accent) 60%, transparent);
+      background: color-mix(in srgb, var(--wg-accent) 22%, transparent);
+      color: var(--wg-accent);
+      font-weight: 600;
+    }
+
+    .dialog-btn.primary:hover:not(:disabled) {
       background: color-mix(in srgb, var(--wg-accent) 32%, transparent);
     }
 
-    .primary-btn:disabled {
+    .dialog-btn:disabled {
       opacity: 0.45;
       cursor: default;
     }
@@ -677,7 +812,7 @@
     <div class="header">
       <div class="title-group">
         <span class="title">Chunked Write Guard</span>
-        <span id="versionTag" class="version-tag">v—</span>
+        <button id="versionTag" type="button" class="version-tag" title="查看变更日志">v—</button>
         <button id="checkUpdateBtn" type="button" class="ghost-btn">检查更新</button>
       </div>
       <span id="activeBadge" class="badge">加载中…</span>
@@ -732,13 +867,29 @@
         <span id="updateVersionPair"></span>
         <a id="updateReleaseLink" class="release-link" target="_blank" rel="noopener noreferrer">GitHub</a>
       </div>
-      <pre id="updateNotes" class="update-notes"></pre>
+      <div id="updateNotes" class="md-notes"></div>
     </div>
     <div class="dialog-foot">
       <span id="updateHint" class="dialog-hint">保留本地档位与统计日志</span>
       <div class="dialog-actions">
-        <button id="updateCancelBtn" type="button" class="ghost-btn">关闭</button>
-        <button id="updateActionBtn" type="button" class="primary-btn" hidden></button>
+        <button id="updateCancelBtn" type="button" class="dialog-btn">关闭</button>
+        <button id="updateActionBtn" type="button" class="dialog-btn primary" hidden></button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="changelogDialog" class="update-dialog" aria-labelledby="changelogDialogTitle">
+    <div class="dialog-head">
+      <span id="changelogDialogTitle" class="dialog-title">变更日志</span>
+      <button id="changelogCloseIcon" type="button" class="dialog-close" aria-label="关闭">×</button>
+    </div>
+    <div class="dialog-body">
+      <div id="changelogContent" class="md-notes changelog-body"></div>
+    </div>
+    <div class="dialog-foot">
+      <span id="changelogVersionHint" class="dialog-hint"></span>
+      <div class="dialog-actions">
+        <button id="changelogCloseBtn" type="button" class="dialog-btn">关闭</button>
       </div>
     </div>
   </dialog>
@@ -958,6 +1109,92 @@
         }
       };
 
+      const INLINE_MD_RE = /(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\(https:\/\/[^)\s]+\))/g;
+
+      const appendInlineMarkdown = (parent, text) => {
+        let lastIndex = 0;
+        for (const match of text.matchAll(INLINE_MD_RE)) {
+          const idx = match.index ?? 0;
+          if (idx > lastIndex) {
+            parent.appendChild(document.createTextNode(text.slice(lastIndex, idx)));
+          }
+          const token = match[0];
+          if (token.startsWith('`')) {
+            const code = document.createElement('code');
+            code.className = 'md-code';
+            code.textContent = token.slice(1, -1);
+            parent.appendChild(code);
+          } else if (token.startsWith('**')) {
+            const strong = document.createElement('strong');
+            strong.className = 'md-strong';
+            strong.textContent = token.slice(2, -2);
+            parent.appendChild(strong);
+          } else {
+            const splitAt = token.indexOf('](');
+            const link = document.createElement('a');
+            link.className = 'md-link';
+            link.textContent = token.slice(1, splitAt);
+            link.href = token.slice(splitAt + 2, -1);
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            parent.appendChild(link);
+          }
+          lastIndex = idx + token.length;
+        }
+        if (lastIndex < text.length) {
+          parent.appendChild(document.createTextNode(text.slice(lastIndex)));
+        }
+      };
+
+      const renderMarkdown = (container, markdown) => {
+        container.replaceChildren();
+        const lines = String(markdown ?? '').replace(/\r\n/g, '\n').split('\n');
+        let listEl = null;
+
+        const closeList = () => {
+          listEl = null;
+        };
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line) {
+            closeList();
+            continue;
+          }
+          if (/^#\s+changelog$/i.test(line)) {
+            closeList();
+            continue;
+          }
+          const headingMatch = /^(#{1,4})\s+(.*)$/.exec(line);
+          if (headingMatch) {
+            closeList();
+            const level = headingMatch[1].length;
+            const heading = document.createElement('div');
+            heading.className = level <= 2 ? 'md-h2' : 'md-h3';
+            appendInlineMarkdown(heading, headingMatch[2]);
+            container.appendChild(heading);
+            continue;
+          }
+          const listMatch = /^[-*]\s+(.*)$/.exec(line);
+          if (listMatch) {
+            if (!listEl) {
+              listEl = document.createElement('ul');
+              listEl.className = 'md-list';
+              container.appendChild(listEl);
+            }
+            const li = document.createElement('li');
+            appendInlineMarkdown(li, listMatch[1]);
+            listEl.appendChild(li);
+            continue;
+          }
+          closeList();
+          const p = document.createElement('p');
+          p.className = 'md-p';
+          appendInlineMarkdown(p, line);
+          container.appendChild(p);
+        }
+      };
+
       const updateDialog = document.getElementById('updateDialog');
       const updateCloseIcon = document.getElementById('updateCloseIcon');
       const updateCancelBtn = document.getElementById('updateCancelBtn');
@@ -973,12 +1210,22 @@
       const updateReleaseLink = document.getElementById('updateReleaseLink');
       const updateNotesEl = document.getElementById('updateNotes');
 
+      const changelogDialog = document.getElementById('changelogDialog');
+      const changelogCloseIcon = document.getElementById('changelogCloseIcon');
+      const changelogCloseBtn = document.getElementById('changelogCloseBtn');
+      const changelogContentEl = document.getElementById('changelogContent');
+      const changelogVersionHintEl = document.getElementById('changelogVersionHint');
+
       let updateState = { status: 'idle' };
       let updatePollTimer = null;
       let reloadPollTimer = null;
+      let reloadCountdownTimer = null;
+      let reloadCountdownLeft = 0;
 
       const isUpdateLocked = () =>
-        updateState.status === 'installing' || updateState.status === 'reloading';
+        updateState.status === 'installing' ||
+        updateState.status === 'installed' ||
+        updateState.status === 'reloading';
 
       const stopUpdatePoll = () => {
         if (updatePollTimer !== null) {
@@ -987,7 +1234,48 @@
         }
       };
 
+      const stopReloadCountdown = () => {
+        if (reloadCountdownTimer !== null) {
+          clearInterval(reloadCountdownTimer);
+          reloadCountdownTimer = null;
+        }
+        reloadCountdownLeft = 0;
+      };
+
       const formatMegabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+
+      const triggerReload = () => {
+        stopReloadCountdown();
+        stopUpdatePoll();
+        renderUpdateState({
+          ...updateState,
+          status: 'reloading',
+          message: '正在重启面板服务并加载新版本…',
+          error: null,
+        });
+        // 宿主可能已提前触发重启导致请求断连，由 startReloadWatch 统一探活刷新
+        postJson('/api/update', { action: 'reload' }).catch(() => {});
+      };
+
+      const startReloadCountdown = (seconds = 3) => {
+        if (reloadCountdownTimer !== null) return;
+        reloadCountdownLeft = seconds;
+        const syncCountdownText = () => {
+          const ver = updateState.currentVersion ? ` v${updateState.currentVersion}` : '';
+          updateSummaryEl.textContent = `更新成功${ver}`;
+          updateDetailEl.textContent = `${reloadCountdownLeft} 秒后自动重新加载…`;
+          updateDetailEl.className = 'update-detail';
+        };
+        syncCountdownText();
+        reloadCountdownTimer = setInterval(() => {
+          reloadCountdownLeft -= 1;
+          if (reloadCountdownLeft <= 0) {
+            triggerReload();
+            return;
+          }
+          syncCountdownText();
+        }, 1000);
+      };
 
       const startReloadWatch = () => {
         if (reloadPollTimer !== null) return;
@@ -1018,13 +1306,15 @@
         };
         setTimeout(() => {
           reloadPollTimer = setInterval(probe, 500);
-        }, 700);
+        }, 900);
       };
 
       const renderUpdateState = (state) => {
         updateState = state || { status: 'idle' };
         const st = updateState.status;
         const locked = isUpdateLocked();
+        const isCompactSuccess = st === 'installed' || st === 'reloading';
+        updateDialog.classList.toggle('compact-notice', isCompactSuccess);
         updateCloseIcon.disabled = locked;
         updateCancelBtn.disabled = locked;
 
@@ -1041,18 +1331,22 @@
         updateIconEl.className = iconCfg.cls;
         updateIconEl.textContent = iconCfg.text;
 
-        updateSummaryEl.textContent = updateState.message || '准备检查更新…';
+        if (st !== 'installed' || reloadCountdownTimer === null) {
+          updateSummaryEl.textContent = updateState.message || '准备检查更新…';
+        }
         const detailText =
           st === 'error'
             ? updateState.error || '未知错误'
             : st === 'available' && updateState.source === 'tag'
               ? '当前仓库尚未发布 Release，已自动回退至最新稳定标签。'
               : '';
-        updateDetailEl.textContent = detailText;
-        updateDetailEl.className = st === 'error' ? 'update-detail err' : 'update-detail';
+        if (st !== 'installed') {
+          updateDetailEl.textContent = detailText;
+          updateDetailEl.className = st === 'error' ? 'update-detail err' : 'update-detail';
+        }
 
         const showProgress =
-          st === 'checking' || st === 'installing' || st === 'reloading' || st === 'error';
+          st === 'checking' || st === 'installing' || st === 'error';
         updateProgressWrap.className = showProgress ? 'progress-wrap show' : 'progress-wrap';
         const dl = updateState.download;
         if (st === 'error') {
@@ -1073,7 +1367,8 @@
               : '';
         }
 
-        const hasVersions = Boolean(updateState.currentVersion && updateState.latestVersion);
+        const hasVersions =
+          !isCompactSuccess && Boolean(updateState.currentVersion && updateState.latestVersion);
         updateVersionMeta.className = hasVersions ? 'version-meta show' : 'version-meta';
         if (hasVersions) {
           updateVersionPair.textContent = `当前 v${updateState.currentVersion} → 最新 v${updateState.latestVersion}`;
@@ -1087,14 +1382,16 @@
         }
 
         const notes = typeof updateState.releaseNotes === 'string' ? updateState.releaseNotes.trim() : '';
-        updateNotesEl.textContent = notes;
-        updateNotesEl.className = notes && (st === 'available' || st === 'installed')
-          ? 'update-notes show'
-          : 'update-notes';
+        const showNotes = Boolean(notes) && st === 'available';
+        if (showNotes) {
+          renderMarkdown(updateNotesEl, notes);
+        } else {
+          updateNotesEl.replaceChildren();
+        }
+        updateNotesEl.className = showNotes ? 'md-notes show' : 'md-notes';
 
         const actionLabelMap = {
           available: '立即更新',
-          installed: '重新加载',
           error: '重试',
         };
         const actionLabel = actionLabelMap[st] || '';
@@ -1112,6 +1409,12 @@
           stopUpdatePoll();
         }
 
+        if (st === 'installed') {
+          startReloadCountdown(3);
+        } else {
+          stopReloadCountdown();
+        }
+
         if (st === 'reloading') {
           startReloadWatch();
         }
@@ -1122,6 +1425,14 @@
           const state = await postJson('/api/update', payload);
           renderUpdateState(state);
         } catch (err) {
+          // 文件替换阶段宿主可能已主动重启 Sidecar，切入探活刷新而不误报失败
+          if (
+            updateState.status === 'installing' &&
+            (updateState.phase === 'install' || updateState.phase === 'complete')
+          ) {
+            triggerReload();
+            return;
+          }
           stopUpdatePoll();
           renderUpdateState({
             ...updateState,
@@ -1151,12 +1462,54 @@
         }
       };
 
+      const openChangelogDialog = async () => {
+        if (!changelogDialog.open) {
+          changelogDialog.showModal();
+        }
+        changelogVersionHintEl.textContent = '';
+        changelogContentEl.replaceChildren();
+        const loadingLine = document.createElement('p');
+        loadingLine.className = 'md-p';
+        loadingLine.textContent = '正在读取变更日志…';
+        changelogContentEl.appendChild(loadingLine);
+
+        try {
+          const res = await apiFetch('/api/changelog', { method: 'GET' });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          changelogVersionHintEl.textContent = data.version ? `当前版本 v${data.version}` : '';
+          if (data.markdown) {
+            renderMarkdown(changelogContentEl, data.markdown);
+          } else {
+            renderMarkdown(changelogContentEl, '暂无本地变更日志记录。');
+          }
+        } catch (err) {
+          renderMarkdown(changelogContentEl, `读取变更日志失败：${err.message}`);
+        }
+      };
+
+      const closeChangelogDialog = () => {
+        if (changelogDialog.open) {
+          changelogDialog.close();
+        }
+      };
+
+      versionTagEl.addEventListener('click', openChangelogDialog);
+      changelogCloseIcon.addEventListener('click', closeChangelogDialog);
+      changelogCloseBtn.addEventListener('click', closeChangelogDialog);
+      changelogDialog.addEventListener('click', (event) => {
+        if (event.target === changelogDialog) closeChangelogDialog();
+      });
+
       recoveryToggle.addEventListener('click', toggleRecovery);
       resetStatsBtn.addEventListener('click', resetStats);
       checkUpdateBtn.addEventListener('click', openUpdateDialog);
       updateCloseIcon.addEventListener('click', closeUpdateDialog);
       updateCancelBtn.addEventListener('click', closeUpdateDialog);
-      updateDialog.addEventListener('close', stopUpdatePoll);
+      updateDialog.addEventListener('close', () => {
+        stopUpdatePoll();
+        stopReloadCountdown();
+      });
       updateDialog.addEventListener('cancel', (event) => {
         if (isUpdateLocked()) event.preventDefault();
       });
@@ -1166,8 +1519,6 @@
       updateActionBtn.addEventListener('click', () => {
         if (updateState.status === 'available') {
           requestUpdate({ action: 'apply', version: updateState.latestVersion });
-        } else if (updateState.status === 'installed') {
-          requestUpdate({ action: 'reload' });
         } else if (updateState.status === 'error') {
           requestUpdate({ action: 'check' });
         }
