@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1] - 2026-11-24
+
+### Added
+- 侧边栏面板新增缓存提示，说明在对话中途切换档位或开关会重写 `AGENTS.md` 并导致下一轮前缀缓存失效重算。
+
+### Fixed
+- 修复从 `v1.3.x` 热升级期间旧会话仍调用 `pre-tool-use` 返回 `{}` 被宿主拒绝写入的问题；遇到 `pre-tool-use` 或 `PreToolUse` 事件时自动 `fail-open` 输出 `{"decision":"allow"}`。
+
 ## [2.0.0] - 2026-11-24
 
 ### Changed

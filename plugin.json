@@ -1,7 +1,7 @@
 {
   "name": "chunked-write-guard",
   "displayName": "Chunked Write Guard",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Guides chunked file writes with 700/500/300 presets in the side pane and PostToolUse oversize write reminders without blocking disk writes.",
   "author": {
     "name": "Lynn-zy",

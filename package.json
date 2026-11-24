@@ -1,6 +1,6 @@
 {
   "name": "antigravity-chunked-write-guard",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Antigravity plugin that guides chunked file writes with a 700/500/300 side-pane switcher and non-blocking PostToolUse oversize write reminders.",
   "type": "module",
   "license": "MIT",
