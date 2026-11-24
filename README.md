@@ -9,9 +9,9 @@
 本插件由四个部分配合处理这一问题：
 
 1. **常驻规则（`rules/AGENTS.md`）**：约定单次写入目标。长文件先写骨架，再通过多次 `write_file(Append: true)` 或 `edit_file` 按模块补齐。
-2. **断流恢复（`PreInvocation` Hook）**：扫描 `transcript.jsonl` 尾部。仅在上一轮出现未恢复的 `stream was interrupted` 或流超时记录时注入一次续写提醒，并附带去重标记。正常对话直接返回 `{}`，不增加上下文，不影响 Prompt Cache。
+2. **断流恢复（`PreInvocation` Hook，可在面板关闭）**：扫描 `transcript.jsonl` 尾部。仅在开关启用且上一轮出现未恢复的 `stream was interrupted` 或流超时记录时注入一次续写提醒，并附带去重标记。关闭后不再向模型上下文注入额外提醒；正常对话直接返回 `{}`，不影响 Prompt Cache。
 3. **超大写入拦截（`PreToolUse` Hook）**：匹配 `write_file|edit_file`，拦截超过单次写入上限的写入和超过合计上限的全量替换，并返回拆分建议。纯删除旧代码（`Replacement` 为空）直接放行，脚本异常时自动 `fail-open` 放行。
-4. **侧边栏切换面板（Sidecar UI）**：内置 Write Guard 侧边栏面板，可在 `700`、`500`（默认）、`300` 三档间切换，同时展示超限拦截与断流恢复次数并支持清零。切换后 Hook 阈值立即生效，`rules/AGENTS.md` 同步重写。
+4. **侧边栏面板（Sidecar UI）**：内置 Write Guard 面板，支持在 `700`、`500`（默认）、`300` 三档间切换，随时开关断流恢复提示，查看或清零触发统计。点击面板顶栏「检查更新」可直接从 GitHub 拉取新版本替换升级，同时保留本地档位、开关与统计日志。切换配置后 Hook 立即生效，`rules/AGENTS.md` 同步重写。
 
 ## 三档阈值
 
@@ -66,13 +66,15 @@ bash ./scripts/install.sh --uninstall
 │   ├── stats.mjs                # 触发事件追加日志与统计清零
 │   ├── hook-core.mjs            # 阈值判定与断流检测逻辑
 │   ├── write-guard-hook.mjs     # Hook CLI 入口（fail-open）
-│   ├── hook-core.test.mjs       # Node 单元测试
+│   ├── hook-core.test.mjs       # Hook 与面板状态单元测试
+│   ├── updater.test.mjs         # 面板内更新器单元测试
 │   ├── install.ps1              # Windows 安装与卸载脚本
 │   └── install.sh               # macOS / Linux 安装与卸载脚本
 └── sidecars/panel/
     ├── sidecar.json             # 侧边栏 Sidecar 面板声明
     ├── main.mjs                 # Sidecar HTTP 服务入口
-    ├── panel-logic.mjs          # 面板状态查询与档位切换逻辑
+    ├── panel-logic.mjs          # 面板状态查询、档位与开关逻辑
+    ├── updater.mjs              # 零依赖 GitHub 更新检测、下载校验与安全替换
     └── index.html               # 侧边栏面板页面（自适应宿主主题）
 ```
 

@@ -30,6 +30,7 @@ import {
   buildPanelState,
   handleResetStats,
   handleSetPreset,
+  handleSetRecovery,
 } from '../sidecars/panel/panel-logic.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -439,6 +440,76 @@ test('CLI entrypoint records only deny/recovery events and fails open on invalid
     });
     assert.equal(malformedRun.status, 0);
     assert.deepEqual(JSON.parse(malformedRun.stdout), { decision: 'allow' });
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test('recovery toggle disables PreInvocation injection, updates AGENTS.md, and survives preset switches', () => {
+  const ws = createTempWorkspace();
+  try {
+    const initial = buildPanelState({ configPath: ws.configPath, eventsPath: ws.eventsPath });
+    assert.equal(initial.recoveryEnabled, true);
+    assert.match(initial.version, /^\d+\.\d+\.\d+$/);
+
+    const invalid = handleSetRecovery(
+      { enabled: 'no' },
+      { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
+    );
+    assert.equal(invalid.ok, false);
+    assert.equal(invalid.status, 400);
+
+    const turnedOff = handleSetRecovery(
+      { enabled: false },
+      { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
+    );
+    assert.equal(turnedOff.ok, true);
+    assert.equal(turnedOff.changed, true);
+    assert.equal(turnedOff.state.recoveryEnabled, false);
+    const rulesOff = fs.readFileSync(ws.rulesPath, 'utf8');
+    assert.match(rulesOff, /断流恢复提示：已关闭/);
+    assert.doesNotMatch(rulesOff, /收到断流恢复提示时/);
+
+    // 重复提交相同开关状态时短路跳过写盘
+    const repeatOff = handleSetRecovery(
+      { enabled: false },
+      { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
+    );
+    assert.equal(repeatOff.ok, true);
+    assert.equal(repeatOff.changed, false);
+
+    // 断流后关闭状态绝不向模型上下文注入提醒
+    writeTranscript(ws.transcriptPath, [
+      { step_index: 1, type: 'ERROR_MESSAGE', content: 'Error: The stream was interrupted.' },
+    ]);
+    assert.deepEqual(
+      handlePreInvocation({ transcriptPath: ws.transcriptPath }, { configPath: ws.configPath }),
+      {},
+    );
+
+    // 切换档位应保留已关闭的断流恢复开关
+    const switched = handleSetPreset(
+      { presetId: '300' },
+      { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
+    );
+    assert.equal(switched.ok, true);
+    assert.equal(switched.state.presetId, '300');
+    assert.equal(switched.state.recoveryEnabled, false);
+    assert.doesNotMatch(fs.readFileSync(ws.rulesPath, 'utf8'), /收到断流恢复提示时/);
+
+    // 重新开启后恢复正常注入
+    const turnedOn = handleSetRecovery(
+      { enabled: true },
+      { configPath: ws.configPath, rulesPath: ws.rulesPath, eventsPath: ws.eventsPath },
+    );
+    assert.equal(turnedOn.ok, true);
+    assert.equal(turnedOn.state.recoveryEnabled, true);
+    const out = handlePreInvocation(
+      { transcriptPath: ws.transcriptPath },
+      { configPath: ws.configPath },
+    );
+    assert.equal(Array.isArray(out.injectSteps), true);
+    assert.match(out.injectSteps[0].systemMessage.systemMessage, /≤ 200 行/);
   } finally {
     ws.cleanup();
   }

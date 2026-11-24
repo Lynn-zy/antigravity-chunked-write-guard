@@ -65,14 +65,35 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      flex-wrap: wrap;
+      gap: 8px;
       margin-bottom: 4px;
+    }
+
+    .title-group {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-width: 0;
     }
 
     .title {
       font-size: 15px;
       font-weight: 600;
       letter-spacing: 0.01em;
+    }
+
+    .version-tag {
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10.5px;
+      line-height: 1.35;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--wg-muted);
+      border: 1px solid var(--wg-border);
+      background: var(--wg-subtle);
     }
 
     .badge {
@@ -84,6 +105,31 @@
       background: color-mix(in srgb, var(--wg-accent) 16%, transparent);
       color: var(--wg-accent);
       border: 1px solid color-mix(in srgb, var(--wg-accent) 38%, transparent);
+    }
+
+    .ghost-btn {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--wg-border);
+      background: transparent;
+      color: var(--wg-muted);
+      font: inherit;
+      font-size: 10.5px;
+      line-height: 1.35;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .ghost-btn:hover:not(:disabled) {
+      color: var(--wg-fg);
+      border-color: color-mix(in srgb, var(--wg-accent) 45%, var(--wg-border));
+      background: color-mix(in srgb, var(--wg-accent) 8%, transparent);
+    }
+
+    .ghost-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
     }
 
     .subtitle {
@@ -200,6 +246,80 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .metric-cell.dimmed {
+      opacity: 0.55;
+    }
+
+    .toggle-card {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--wg-border);
+      background: var(--wg-card);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .toggle-info {
+      min-width: 0;
+    }
+
+    .toggle-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--wg-fg);
+      margin-bottom: 2px;
+    }
+
+    .toggle-desc {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--wg-muted);
+    }
+
+    .switch-btn {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
+      padding: 0;
+      border: 1px solid var(--wg-border);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--wg-fg) 10%, transparent);
+      cursor: pointer;
+      transition: background 150ms ease, border-color 150ms ease;
+    }
+
+    .switch-btn::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--wg-muted);
+      transition: transform 150ms ease, background 150ms ease;
+    }
+
+    .switch-btn[aria-checked="true"] {
+      background: color-mix(in srgb, var(--wg-accent) 28%, transparent);
+      border-color: color-mix(in srgb, var(--wg-accent) 65%, transparent);
+    }
+
+    .switch-btn[aria-checked="true"]::after {
+      transform: translateX(16px);
+      background: var(--wg-accent);
+    }
+
+    .switch-btn:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+
     .status-bar {
       margin-top: 12px;
       padding: 10px 12px;
@@ -291,17 +411,288 @@
 
     .status-msg.ok { color: var(--wg-ok); }
     .status-msg.err { color: var(--wg-err); }
+
+    .update-dialog {
+      width: min(390px, calc(100vw - 28px));
+      padding: 0;
+      border-radius: 14px;
+      border: 1px solid var(--wg-border);
+      background: var(--wg-bg);
+      color: var(--wg-fg);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+    }
+
+    .update-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.56);
+      backdrop-filter: blur(4px);
+    }
+
+    .dialog-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--wg-border);
+    }
+
+    .dialog-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .dialog-close {
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--wg-muted);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .dialog-close:hover:not(:disabled) {
+      color: var(--wg-fg);
+      background: var(--wg-subtle);
+    }
+
+    .dialog-close:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .dialog-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .update-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .update-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      background: color-mix(in srgb, var(--wg-accent) 16%, transparent);
+      color: var(--wg-accent);
+      border: 1px solid color-mix(in srgb, var(--wg-accent) 35%, transparent);
+    }
+
+    .update-icon.ok {
+      background: color-mix(in srgb, var(--wg-ok) 15%, transparent);
+      color: var(--wg-ok);
+      border-color: color-mix(in srgb, var(--wg-ok) 38%, transparent);
+    }
+
+    .update-icon.err {
+      background: color-mix(in srgb, var(--wg-err) 15%, transparent);
+      color: var(--wg-err);
+      border-color: color-mix(in srgb, var(--wg-err) 38%, transparent);
+    }
+
+    .update-icon.spin::after {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid color-mix(in srgb, var(--wg-accent) 28%, transparent);
+      border-top-color: var(--wg-accent);
+      animation: wg-spin 700ms linear infinite;
+    }
+
+    @keyframes wg-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .update-summary {
+      font-size: 12.5px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    .update-detail {
+      margin-top: 2px;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--wg-muted);
+      word-break: break-word;
+    }
+
+    .update-detail.err {
+      color: var(--wg-err);
+    }
+
+    .progress-wrap {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .progress-wrap.show {
+      display: flex;
+    }
+
+    .progress-track {
+      position: relative;
+      height: 6px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--wg-fg) 10%, transparent);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: var(--wg-accent);
+      transition: width 160ms ease;
+    }
+
+    .progress-fill.indeterminate {
+      width: 38%;
+      animation: wg-slide 1.1s ease-in-out infinite;
+    }
+
+    .progress-fill.err {
+      width: 100%;
+      background: var(--wg-err);
+    }
+
+    @keyframes wg-slide {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(300%); }
+    }
+
+    .progress-meta {
+      font-size: 11px;
+      color: var(--wg-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .version-meta {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: var(--wg-subtle);
+      border: 1px solid var(--wg-border);
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .version-meta.show {
+      display: flex;
+    }
+
+    .release-link {
+      color: var(--wg-accent);
+      text-decoration: none;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .release-link:hover {
+      text-decoration: underline;
+    }
+
+    .update-notes {
+      display: none;
+      margin: 0;
+      padding: 8px 10px;
+      max-height: 140px;
+      overflow: auto;
+      border-radius: 8px;
+      border: 1px solid var(--wg-border);
+      background: var(--wg-subtle);
+      color: var(--wg-muted);
+      font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .update-notes.show {
+      display: block;
+    }
+
+    .dialog-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--wg-border);
+    }
+
+    .dialog-hint {
+      font-size: 10.5px;
+      color: var(--wg-muted);
+    }
+
+    .dialog-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .primary-btn {
+      padding: 5px 12px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--wg-accent) 60%, transparent);
+      background: color-mix(in srgb, var(--wg-accent) 22%, transparent);
+      color: var(--wg-accent);
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 140ms ease;
+    }
+
+    .primary-btn:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--wg-accent) 32%, transparent);
+    }
+
+    .primary-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
   <main class="page">
     <div class="header">
-      <span class="title">Chunked Write Guard</span>
+      <div class="title-group">
+        <span class="title">Chunked Write Guard</span>
+        <span id="versionTag" class="version-tag">v—</span>
+        <button id="checkUpdateBtn" type="button" class="ghost-btn">检查更新</button>
+      </div>
       <span id="activeBadge" class="badge">加载中…</span>
     </div>
     <p class="subtitle">点击下方档位切换单次写入限制。Hook 立即生效，规则文件同步更新。</p>
 
     <div id="presetList" class="preset-list" role="group" aria-label="写入阈值档位"></div>
+
+    <div class="toggle-card">
+      <div class="toggle-info">
+        <div class="toggle-title">断流恢复提示</div>
+        <p id="recoveryDesc" class="toggle-desc">断流后注入一次降档续写提示（会进入上下文）</p>
+      </div>
+      <button id="recoveryToggle" type="button" role="switch" aria-checked="true" aria-label="断流恢复提示开关" class="switch-btn"></button>
+    </div>
 
     <div class="status-bar">
       <div class="stats-row">
@@ -318,18 +709,58 @@
     </div>
   </main>
 
+  <dialog id="updateDialog" class="update-dialog" aria-labelledby="updateDialogTitle">
+    <div class="dialog-head">
+      <span id="updateDialogTitle" class="dialog-title">插件更新</span>
+      <button id="updateCloseIcon" type="button" class="dialog-close" aria-label="关闭">×</button>
+    </div>
+    <div class="dialog-body">
+      <div class="update-hero">
+        <span id="updateIcon" class="update-icon"></span>
+        <div>
+          <div id="updateSummary" class="update-summary">准备检查更新…</div>
+          <div id="updateDetail" class="update-detail"></div>
+        </div>
+      </div>
+      <div id="updateProgressWrap" class="progress-wrap">
+        <div class="progress-track">
+          <div id="updateProgressFill" class="progress-fill"></div>
+        </div>
+        <div id="updateProgressMeta" class="progress-meta"></div>
+      </div>
+      <div id="updateVersionMeta" class="version-meta">
+        <span id="updateVersionPair"></span>
+        <a id="updateReleaseLink" class="release-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+      <pre id="updateNotes" class="update-notes"></pre>
+    </div>
+    <div class="dialog-foot">
+      <span id="updateHint" class="dialog-hint">保留本地档位与统计日志</span>
+      <div class="dialog-actions">
+        <button id="updateCancelBtn" type="button" class="ghost-btn">关闭</button>
+        <button id="updateActionBtn" type="button" class="primary-btn" hidden></button>
+      </div>
+    </div>
+  </dialog>
+
   <script>
     (() => {
       const listEl = document.getElementById('presetList');
+      const versionTagEl = document.getElementById('versionTag');
       const badgeEl = document.getElementById('activeBadge');
+      const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+      const recoveryToggle = document.getElementById('recoveryToggle');
+      const recoveryDescEl = document.getElementById('recoveryDesc');
       const denyCountEl = document.getElementById('denyCount');
       const recoveryCountEl = document.getElementById('recoveryCount');
       const resetStatsBtn = document.getElementById('resetStatsBtn');
       const statusDotEl = document.getElementById('statusDot');
       const statusMsgEl = document.getElementById('statusMsg');
+
       let busy = false;
       let loading = false;
       let activePresetId = '';
+      let recoveryEnabled = true;
       let lastStats = { denyCount: 0, recoveryCount: 0, lastTriggeredAt: null };
       let statusKind = '';
 
@@ -338,6 +769,25 @@
           return window.sidecar.fetch(url, options);
         }
         return fetch(url, options);
+      };
+
+      const postJson = async (url, payload) => {
+        const res = await apiFetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data;
+      };
+
+      const syncInteractiveState = () => {
+        for (const btn of listEl.querySelectorAll('button')) {
+          btn.disabled = busy;
+        }
+        recoveryToggle.disabled = busy;
+        resetStatsBtn.disabled = busy || (lastStats.denyCount === 0 && lastStats.recoveryCount === 0);
       };
 
       const setStatus = (text, kind = '') => {
@@ -365,12 +815,23 @@
         recoveryCountEl.textContent = String(recovery);
         denyCountEl.className = deny > 0 ? 'stat-num nonzero' : 'stat-num';
         recoveryCountEl.className = recovery > 0 ? 'stat-num nonzero' : 'stat-num';
-        resetStatsBtn.disabled = busy || (deny === 0 && recovery === 0);
+      };
+
+      const renderRecoveryToggle = (enabled) => {
+        recoveryEnabled = Boolean(enabled);
+        recoveryToggle.setAttribute('aria-checked', String(recoveryEnabled));
+        recoveryDescEl.textContent = recoveryEnabled
+          ? '断流后注入一次降档续写提示（会进入上下文）'
+          : '已关闭，断流后不向模型上下文注入额外提醒';
       };
 
       const render = (state) => {
         activePresetId = state.presetId;
+        if (typeof state.version === 'string' && state.version) {
+          versionTagEl.textContent = `v${state.version}`;
+        }
         badgeEl.textContent = `当前：${state.presetId} 行档`;
+        renderRecoveryToggle(state.recoveryEnabled !== false);
         renderStats(state.stats);
 
         listEl.innerHTML = '';
@@ -379,8 +840,11 @@
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'preset-card';
-          btn.disabled = busy;
           btn.setAttribute('aria-pressed', String(isActive));
+          const recoveryMetricClass = recoveryEnabled ? 'metric-cell' : 'metric-cell dimmed';
+          const recoveryMetricText = recoveryEnabled
+            ? `≤ ${preset.recoveryTargetLines} 行`
+            : `≤ ${preset.recoveryTargetLines} 行 · 已关`;
           btn.innerHTML = `
             <div class="card-top">
               <span class="card-title">${preset.label}</span>
@@ -400,15 +864,78 @@
                 <span class="metric-label">edit_file 合计上限</span>
                 <span class="metric-val">${preset.maxEditCombinedLines} 行 / ${preset.maxEditCombinedKb} KB</span>
               </div>
-              <div class="metric-cell">
+              <div class="${recoveryMetricClass}">
                 <span class="metric-label">断流恢复上限</span>
-                <span class="metric-val">≤ ${preset.recoveryTargetLines} 行</span>
+                <span class="metric-val">${recoveryMetricText}</span>
               </div>
             </div>
           `;
           btn.addEventListener('click', () => switchPreset(preset.id));
           listEl.appendChild(btn);
         }
+        syncInteractiveState();
+      };
+
+      const runMutation = async (pendingText, action, onSuccess, failPrefix) => {
+        if (busy) return;
+        busy = true;
+        if (pendingText) setStatus(pendingText, '');
+        syncInteractiveState();
+
+        let nextState = null;
+        let errorMessage = '';
+        try {
+          nextState = await action();
+        } catch (err) {
+          errorMessage = err.message;
+        } finally {
+          busy = false;
+        }
+
+        if (nextState) {
+          render(nextState);
+          onSuccess(nextState);
+          return;
+        }
+
+        syncInteractiveState();
+        setStatus(`${failPrefix}：${errorMessage}`, 'err');
+      };
+
+      const switchPreset = (presetId) => {
+        if (presetId === activePresetId) return;
+        return runMutation(
+          `正在切换至 ${presetId} 行档…`,
+          () => postJson('/api/preset', { presetId }),
+          (state) => setStatus(`已切换为 ${state.active.label}（Hook 已生效，AGENTS.md 已同步）`, 'ok'),
+          '切换失败',
+        );
+      };
+
+      const toggleRecovery = () => {
+        const nextEnabled = !recoveryEnabled;
+        return runMutation(
+          nextEnabled ? '正在开启断流恢复提示…' : '正在关闭断流恢复提示…',
+          () => postJson('/api/recovery', { enabled: nextEnabled }),
+          (state) =>
+            setStatus(
+              state.recoveryEnabled
+                ? '已开启断流恢复提示（Hook 与 AGENTS.md 已同步）'
+                : '已关闭断流恢复提示（断流后不再向模型上下文注入提醒）',
+              'ok',
+            ),
+          '设置失败',
+        );
+      };
+
+      const resetStats = () => {
+        if (resetStatsBtn.disabled) return;
+        return runMutation(
+          '',
+          () => postJson('/api/stats/reset', {}),
+          () => setStatus('触发统计已清零', 'ok'),
+          '清零失败',
+        );
       };
 
       const loadState = async (silent = false) => {
@@ -431,77 +958,232 @@
         }
       };
 
-      const switchPreset = async (presetId) => {
-        if (busy || presetId === activePresetId) return;
-        busy = true;
-        setStatus(`正在切换至 ${presetId} 行档…`, '');
-        for (const btn of listEl.querySelectorAll('button')) btn.disabled = true;
-        resetStatsBtn.disabled = true;
+      const updateDialog = document.getElementById('updateDialog');
+      const updateCloseIcon = document.getElementById('updateCloseIcon');
+      const updateCancelBtn = document.getElementById('updateCancelBtn');
+      const updateActionBtn = document.getElementById('updateActionBtn');
+      const updateIconEl = document.getElementById('updateIcon');
+      const updateSummaryEl = document.getElementById('updateSummary');
+      const updateDetailEl = document.getElementById('updateDetail');
+      const updateProgressWrap = document.getElementById('updateProgressWrap');
+      const updateProgressFill = document.getElementById('updateProgressFill');
+      const updateProgressMeta = document.getElementById('updateProgressMeta');
+      const updateVersionMeta = document.getElementById('updateVersionMeta');
+      const updateVersionPair = document.getElementById('updateVersionPair');
+      const updateReleaseLink = document.getElementById('updateReleaseLink');
+      const updateNotesEl = document.getElementById('updateNotes');
 
-        let nextState = null;
-        let errorMessage = '';
-        try {
-          const res = await apiFetch('/api/preset', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ presetId }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-          nextState = data;
-        } catch (err) {
-          errorMessage = err.message;
-        } finally {
-          busy = false;
+      let updateState = { status: 'idle' };
+      let updatePollTimer = null;
+      let reloadPollTimer = null;
+
+      const isUpdateLocked = () =>
+        updateState.status === 'installing' || updateState.status === 'reloading';
+
+      const stopUpdatePoll = () => {
+        if (updatePollTimer !== null) {
+          clearInterval(updatePollTimer);
+          updatePollTimer = null;
         }
-
-        if (nextState) {
-          render(nextState);
-          setStatus(`已切换为 ${nextState.active.label}（Hook 已生效，AGENTS.md 已同步）`, 'ok');
-          return;
-        }
-
-        for (const btn of listEl.querySelectorAll('button')) btn.disabled = false;
-        renderStats(lastStats);
-        setStatus(`切换失败：${errorMessage}`, 'err');
       };
 
-      const resetStats = async () => {
-        if (busy || resetStatsBtn.disabled) return;
-        busy = true;
-        resetStatsBtn.disabled = true;
+      const formatMegabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 
-        let nextState = null;
-        let errorMessage = '';
+      const startReloadWatch = () => {
+        if (reloadPollTimer !== null) return;
+        let attempts = 0;
+        const probe = async () => {
+          attempts += 1;
+          try {
+            const res = await apiFetch('/api/state', { method: 'GET', cache: 'no-store' });
+            if (res.ok) {
+              clearInterval(reloadPollTimer);
+              reloadPollTimer = null;
+              window.location.reload();
+              return;
+            }
+          } catch {
+            // Sidecar 重启窗口期内连接拒绝属正常现象，继续探活
+          }
+          if (attempts >= 50) {
+            clearInterval(reloadPollTimer);
+            reloadPollTimer = null;
+            renderUpdateState({
+              ...updateState,
+              status: 'error',
+              message: '等待面板重启超时',
+              error: '请重新打开 Write Guard 侧边栏面板以加载新版本。',
+            });
+          }
+        };
+        setTimeout(() => {
+          reloadPollTimer = setInterval(probe, 500);
+        }, 700);
+      };
+
+      const renderUpdateState = (state) => {
+        updateState = state || { status: 'idle' };
+        const st = updateState.status;
+        const locked = isUpdateLocked();
+        updateCloseIcon.disabled = locked;
+        updateCancelBtn.disabled = locked;
+
+        const iconMap = {
+          checking: { cls: 'update-icon spin', text: '' },
+          installing: { cls: 'update-icon spin', text: '' },
+          reloading: { cls: 'update-icon spin', text: '' },
+          current: { cls: 'update-icon ok', text: '✓' },
+          installed: { cls: 'update-icon ok', text: '✓' },
+          available: { cls: 'update-icon', text: '↑' },
+          error: { cls: 'update-icon err', text: '!' },
+        };
+        const iconCfg = iconMap[st] || { cls: 'update-icon', text: '·' };
+        updateIconEl.className = iconCfg.cls;
+        updateIconEl.textContent = iconCfg.text;
+
+        updateSummaryEl.textContent = updateState.message || '准备检查更新…';
+        const detailText =
+          st === 'error'
+            ? updateState.error || '未知错误'
+            : st === 'available' && updateState.source === 'tag'
+              ? '当前仓库尚未发布 Release，已自动回退至最新稳定标签。'
+              : '';
+        updateDetailEl.textContent = detailText;
+        updateDetailEl.className = st === 'error' ? 'update-detail err' : 'update-detail';
+
+        const showProgress =
+          st === 'checking' || st === 'installing' || st === 'reloading' || st === 'error';
+        updateProgressWrap.className = showProgress ? 'progress-wrap show' : 'progress-wrap';
+        const dl = updateState.download;
+        if (st === 'error') {
+          updateProgressFill.className = 'progress-fill err';
+          updateProgressFill.style.width = '100%';
+          updateProgressMeta.textContent = '';
+        } else if (st === 'installing' && updateState.phase === 'download' && dl?.totalBytes > 0) {
+          const pct = Math.min(100, Math.max(0, Number(dl.percent ?? 0)));
+          updateProgressFill.className = 'progress-fill';
+          updateProgressFill.style.width = `${pct}%`;
+          updateProgressMeta.textContent = `${formatMegabytes(dl.downloadedBytes)} / ${formatMegabytes(dl.totalBytes)} (${pct}%)`;
+        } else if (showProgress) {
+          updateProgressFill.className = 'progress-fill indeterminate';
+          updateProgressFill.style.width = '';
+          updateProgressMeta.textContent =
+            st === 'installing' && dl?.downloadedBytes > 0
+              ? `已下载 ${formatMegabytes(dl.downloadedBytes)}`
+              : '';
+        }
+
+        const hasVersions = Boolean(updateState.currentVersion && updateState.latestVersion);
+        updateVersionMeta.className = hasVersions ? 'version-meta show' : 'version-meta';
+        if (hasVersions) {
+          updateVersionPair.textContent = `当前 v${updateState.currentVersion} → 最新 v${updateState.latestVersion}`;
+          const safeUrl =
+            typeof updateState.releaseUrl === 'string' &&
+            updateState.releaseUrl.startsWith('https://github.com/')
+              ? updateState.releaseUrl
+              : '';
+          updateReleaseLink.hidden = !safeUrl;
+          if (safeUrl) updateReleaseLink.href = safeUrl;
+        }
+
+        const notes = typeof updateState.releaseNotes === 'string' ? updateState.releaseNotes.trim() : '';
+        updateNotesEl.textContent = notes;
+        updateNotesEl.className = notes && (st === 'available' || st === 'installed')
+          ? 'update-notes show'
+          : 'update-notes';
+
+        const actionLabelMap = {
+          available: '立即更新',
+          installed: '重新加载',
+          error: '重试',
+        };
+        const actionLabel = actionLabelMap[st] || '';
+        updateActionBtn.hidden = !actionLabel;
+        updateActionBtn.textContent = actionLabel;
+        updateActionBtn.disabled = locked;
+
+        if (st === 'checking' || st === 'installing') {
+          if (updatePollTimer === null && updateDialog.open) {
+            updatePollTimer = setInterval(() => {
+              requestUpdate({ action: 'status' });
+            }, 600);
+          }
+        } else {
+          stopUpdatePoll();
+        }
+
+        if (st === 'reloading') {
+          startReloadWatch();
+        }
+      };
+
+      const requestUpdate = async (payload) => {
         try {
-          const res = await apiFetch('/api/stats/reset', { method: 'POST' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-          nextState = data;
+          const state = await postJson('/api/update', payload);
+          renderUpdateState(state);
         } catch (err) {
-          errorMessage = err.message;
-        } finally {
-          busy = false;
+          stopUpdatePoll();
+          renderUpdateState({
+            ...updateState,
+            status: 'error',
+            message: '更新请求失败',
+            error: err.message,
+          });
         }
+      };
 
-        if (nextState) {
-          render(nextState);
-          setStatus('触发统计已清零', 'ok');
-          return;
+      const openUpdateDialog = () => {
+        if (!updateDialog.open) {
+          updateDialog.showModal();
         }
+        renderUpdateState({
+          ...updateState,
+          status: 'checking',
+          message: '正在检查更新状态…',
+          error: null,
+        });
+        return requestUpdate({ action: 'check' });
+      };
 
-        setStatus(`清零失败：${errorMessage}`, 'err');
+      const closeUpdateDialog = () => {
+        if (!isUpdateLocked() && updateDialog.open) {
+          updateDialog.close();
+        }
+      };
+
+      recoveryToggle.addEventListener('click', toggleRecovery);
+      resetStatsBtn.addEventListener('click', resetStats);
+      checkUpdateBtn.addEventListener('click', openUpdateDialog);
+      updateCloseIcon.addEventListener('click', closeUpdateDialog);
+      updateCancelBtn.addEventListener('click', closeUpdateDialog);
+      updateDialog.addEventListener('close', stopUpdatePoll);
+      updateDialog.addEventListener('cancel', (event) => {
+        if (isUpdateLocked()) event.preventDefault();
+      });
+      updateDialog.addEventListener('click', (event) => {
+        if (event.target === updateDialog) closeUpdateDialog();
+      });
+      updateActionBtn.addEventListener('click', () => {
+        if (updateState.status === 'available') {
+          requestUpdate({ action: 'apply', version: updateState.latestVersion });
+        } else if (updateState.status === 'installed') {
+          requestUpdate({ action: 'reload' });
+        } else if (updateState.status === 'error') {
+          requestUpdate({ action: 'check' });
+        }
+      });
+
+      // 切回面板时自动拉取最新统计（短节流避免 focus 与 visibilitychange 连发两次请求）
+      let lastAutoRefreshAt = 0;
+      const refreshOnReturn = () => {
+        const now = Date.now();
+        if (busy || reloadPollTimer !== null || now - lastAutoRefreshAt < 500) return;
+        lastAutoRefreshAt = now;
         loadState(true);
       };
-
-      resetStatsBtn.addEventListener('click', resetStats);
-
-      // 切回面板时自动拉取最新统计，避免后台定时轮询
-      window.addEventListener('focus', () => {
-        if (!busy) loadState(true);
-      });
+      window.addEventListener('focus', refreshOnReturn);
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && !busy) loadState(true);
+        if (document.visibilityState === 'visible') refreshOnReturn();
       });
 
       loadState();

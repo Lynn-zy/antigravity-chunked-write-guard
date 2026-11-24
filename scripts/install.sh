@@ -59,6 +59,7 @@ FILES=(
   "sidecars/panel/sidecar.json"
   "sidecars/panel/main.mjs"
   "sidecars/panel/panel-logic.mjs"
+  "sidecars/panel/updater.mjs"
   "sidecars/panel/index.html"
 )
 
@@ -66,7 +67,7 @@ for rel in "${FILES[@]}"; do
   cp -f "${REPO_ROOT}/${rel}" "${TARGET_DIR}/${rel}"
 done
 
-# 按当前持久化档位（若首次安装则初始化默认 500 档）同步生成 AGENTS.md
-ACTIVE_LABEL="$(cd "${TARGET_DIR}" && node -e "import('./scripts/presets.mjs').then((m) => { const cur = m.readActivePresetState(); const applied = m.applyPreset(cur.presetId); console.log(applied.config.label); })")"
+# 按当前持久化档位与开关状态（若首次安装则初始化默认 500 档）同步生成 AGENTS.md
+ACTIVE_LABEL="$(cd "${TARGET_DIR}" && node -e "import('./scripts/presets.mjs').then((m) => { const cur = m.readActivePresetState(); const applied = m.applyPreset(cur.presetId, { recoveryEnabled: cur.recoveryEnabled }); console.log(applied.config.label); })")"
 echo "[chunked-write-guard] 安装/更新完成：${TARGET_DIR}"
 echo "[chunked-write-guard] 当前生效档位：${ACTIVE_LABEL}"

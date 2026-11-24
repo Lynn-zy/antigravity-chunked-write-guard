@@ -1,14 +1,32 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_CONFIG_PATH,
   PRESETS,
   PRESET_ORDER,
   applyPreset,
   readActivePresetState,
+  setRecoveryEnabled,
 } from '../../scripts/presets.mjs';
 import {
   readTriggerStats,
   resetTriggerStats,
 } from '../../scripts/stats.mjs';
+
+const PANEL_DIR = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_MANIFEST_PATH = path.resolve(PANEL_DIR, '..', '..', 'plugin.json');
+
+const readPluginVersion = (manifestPath = DEFAULT_MANIFEST_PATH) => {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    return typeof parsed?.version === 'string' && parsed.version.trim()
+      ? parsed.version.trim()
+      : '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+};
 
 const formatPresetSummary = (preset) => ({
   id: preset.id,
@@ -23,8 +41,8 @@ const formatPresetSummary = (preset) => ({
 });
 
 /**
- * 构建侧边栏面板所需的状态与触发统计快照。
- * @param {{ configPath?: string, eventsPath?: string }} [options] - 可选路径覆盖
+ * 构建侧边栏面板所需的状态、版本号、断流恢复开关与触发统计快照。
+ * @param {{ configPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
  * @returns {Record<string, unknown>} 面板展示状态 JSON
  */
 export const buildPanelState = (options = {}) => {
@@ -32,7 +50,9 @@ export const buildPanelState = (options = {}) => {
   const active = readActivePresetState({ configPath });
 
   return {
+    version: readPluginVersion(options.manifestPath),
     presetId: active.presetId,
+    recoveryEnabled: active.recoveryEnabled,
     updatedAt: active.updatedAt,
     active: formatPresetSummary(active.config),
     presets: PRESET_ORDER.map((id) => formatPresetSummary(PRESETS[id])),
@@ -43,7 +63,7 @@ export const buildPanelState = (options = {}) => {
 /**
  * 校验面板提交的档位切换请求，档位有变化时同步更新配置与规则文件。
  * @param {Record<string, unknown>} body - 客户端提交的 JSON 对象
- * @param {{ configPath?: string, rulesPath?: string, eventsPath?: string }} [options] - 可选路径覆盖
+ * @param {{ configPath?: string, rulesPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
  * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> } | { ok: false, status: number, error: string }} 执行结果
  */
 export const handleSetPreset = (body, options = {}) => {
@@ -67,6 +87,38 @@ export const handleSetPreset = (body, options = {}) => {
   }
 
   applyPreset(presetId, options);
+  return {
+    ok: true,
+    changed: true,
+    state: buildPanelState(options),
+  };
+};
+
+/**
+ * 校验面板提交的断流恢复开关请求，状态变化时持久化配置并同步规则文件。
+ * @param {Record<string, unknown>} body - 客户端提交的 JSON 对象
+ * @param {{ configPath?: string, rulesPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
+ * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> } | { ok: false, status: number, error: string }} 执行结果
+ */
+export const handleSetRecovery = (body, options = {}) => {
+  if (typeof body?.enabled !== 'boolean') {
+    return {
+      ok: false,
+      status: 400,
+      error: '参数 enabled 必须是布尔值',
+    };
+  }
+
+  const current = readActivePresetState({ configPath: options.configPath });
+  if (current.recoveryEnabled === body.enabled && current.updatedAt !== null) {
+    return {
+      ok: true,
+      changed: false,
+      state: buildPanelState(options),
+    };
+  }
+
+  setRecoveryEnabled(body.enabled, options);
   return {
     ok: true,
     changed: true,

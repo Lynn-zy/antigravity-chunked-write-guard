@@ -151,20 +151,24 @@ const buildRecoverySystemMessage = (consecutiveInterrupts, config) => {
       : '';
   return [
     `${config.recoveryMarker} 检测到上一轮发生流式中断${countNote}，通常由单次输出过长或超大 write_file / edit_file 参数引起。`,
-    `当前档位为 ${config.label ?? `${config.softTargetLines} 行`}，本轮按以下方式续写：`,
+    `当前档位为 ${config.label ?? `${config.softTargetLines} 行`}，仅限本轮续写生效（完成后恢复正常 ≤ ${config.softTargetLines} 行，勿带入后续轮次或摘要）：`,
     `1. 禁止一次性写入完整长文件，单次 write_file / edit_file 新内容控制在 ≤ ${config.recoveryTargetLines} 行以内；`,
     '2. 先用 write_file 写入骨架并落盘，再用 write_file(Append: true) 或多次局部 edit_file 按模块补齐。',
   ].join('\n');
 };
 
 /**
- * 处理 PreInvocation 事件：仅在检测到刚发生未恢复的流中断时注入一次分段写入恢复提醒。
+ * 处理 PreInvocation 事件：仅在开关启用且检测到刚发生未恢复的流中断时注入一次分段写入恢复提醒。
  * @param {Record<string, unknown>} payload - Antigravity 传入的 stdin JSON
  * @param {{ config?: Record<string, unknown>, configPath?: string }} [options] - 可选配置覆盖
  * @returns {Record<string, unknown>} PreInvocation 响应对象
  */
 export const handlePreInvocation = (payload, options = {}) => {
   const config = resolveRuntimeConfig(options);
+  if (config.recoveryEnabled === false) {
+    return {};
+  }
+
   const transcriptPath =
     typeof payload?.transcriptPath === 'string' ? payload.transcriptPath : '';
   const { interrupted, consecutiveInterrupts } = detectRecentStreamInterruption(
