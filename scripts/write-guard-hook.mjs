@@ -27,6 +27,12 @@ const readStdinAsync = (timeoutMs = 2_000) =>
     process.stdin.resume();
   });
 
+// 热升级窗口期老会话可能仍按旧 hooks.json 调用 pre-tool-use，PreToolUse 契约要求必填 decision 才能放行
+const failOpenOutput = (mode, payload) =>
+  mode === 'pre-tool-use' || payload?.hookEventName === 'PreToolUse'
+    ? '{"decision":"allow"}\n'
+    : '{}\n';
+
 const main = async () => {
   const mode = process.argv[2];
   const raw = (await readStdinAsync()).replace(/^\uFEFF/, '');
@@ -55,10 +61,9 @@ const main = async () => {
     return;
   }
 
-  process.stdout.write('{}\n');
+  process.stdout.write(failOpenOutput(mode, payload));
 };
 
 main().catch(() => {
-  // fail-open：Hook 自身异常不能阻断正常对话流程
-  process.stdout.write('{}\n');
+  process.stdout.write(failOpenOutput(process.argv[2]));
 });

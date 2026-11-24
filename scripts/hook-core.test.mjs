@@ -497,6 +497,25 @@ test('CLI entrypoint runs post-tool-use -> pre-invocation loop, records stats, a
     });
     assert.equal(malformedRun.status, 0);
     assert.deepEqual(JSON.parse(malformedRun.stdout), {});
+
+    // 6. 热升级窗口期收到旧版 pre-tool-use 或 PreToolUse 事件时必须放行，避免宿主拒绝写入
+    const legacyPreToolRun = spawnSync(process.execPath, [HOOK_ENTRY, 'pre-tool-use'], {
+      input: JSON.stringify({
+        toolCall: { name: 'write_file', args: { Path: '/tmp/any.ts', Content: makeLines(1500) } },
+      }),
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(legacyPreToolRun.status, 0);
+    assert.deepEqual(JSON.parse(legacyPreToolRun.stdout), { decision: 'allow' });
+
+    const preToolEventRun = spawnSync(process.execPath, [HOOK_ENTRY, 'unknown-mode'], {
+      input: JSON.stringify({ hookEventName: 'PreToolUse' }),
+      env,
+      encoding: 'utf8',
+    });
+    assert.equal(preToolEventRun.status, 0);
+    assert.deepEqual(JSON.parse(preToolEventRun.stdout), { decision: 'allow' });
   } finally {
     ws.cleanup();
   }
