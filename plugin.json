@@ -1,7 +1,7 @@
 {
   "name": "chunked-write-guard",
   "displayName": "Chunked Write Guard",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Enforces chunked file writes with 700/500/300 preset switching in the side pane, PreInvocation stream-interruption recovery, and a PreToolUse oversize write guard.",
   "author": {
     "name": "Lynn-zy",
