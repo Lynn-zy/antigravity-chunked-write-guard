@@ -1,5 +1,5 @@
 {
-  "chunked-write-guard": {
+  "write-guard": {
     "enabled": true,
     "PostToolUse": [
       {
@@ -17,6 +17,26 @@
       {
         "type": "command",
         "command": "node ./scripts/write-guard-hook.mjs pre-invocation",
+        "timeout": 5
+      }
+    ]
+  },
+  "responsive-mode": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node ./scripts/responsive-hook.mjs",
+        "timeout": 5
+      }
+    ]
+  },
+  "tool-locale": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node ./scripts/tool-locale-hook.mjs",
         "timeout": 5
       }
     ]

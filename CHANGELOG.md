@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.0.0] - 2026-11-26
+
+### Added
+- 合并 `responsive-mode` 与 `tool-locale` 能力，整体升级为三合一护栏插件 **Antigravity Rail**（插件 ID：`antigravity-rail`）。
+- 新增「先回话与途中汇报」模块（`responsive-mode`）：支持 `4 / 6 / 10` 次三档中途静默阈值、模块总开关与轮间纠偏 Hook 开关。
+- 新增「工具摘要中文短语」模块（`tool-locale`）：覆盖 `update_steps` 步骤标题、`update_focus` 与 `toolSummary`，支持模块总开关与同轮立即纠偏 Hook 开关（每用户轮次最多一次，允许中英混排技术短语）。
+- 侧边栏面板升级为三标签布局（「分段写入 / 响应汇报 / 摘要中文」），每个模块提供独立的模块总开关（关闭时自动从 `rules/AGENTS.md` 移除对应章节）与 Hook 开关，底部统一展示四项累计触发统计（超限落盘、写入提醒、响应纠偏、摘要纠偏）。
+
+### Changed
+- 统一配置持久化至 `config/settings.json`（`scripts/config.mjs`），Hook 入口拆分为 `write-guard-hook.mjs`、`responsive-hook.mjs`、`tool-locale-hook.mjs` 并共享 `scripts/transcript.mjs`。
+- 面板接口收口为 `POST /api/settings`，更新器与安装脚本同步切换至 `antigravity-rail` 并在安装前清理旧 `.mjs` 脚本残留。
+
 ## [2.0.2] - 2026-11-24
 
 ### Changed

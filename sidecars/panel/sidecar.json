@@ -2,16 +2,16 @@
   "command": "node",
   "args": ["--max-old-space-size=64", "main.mjs"],
   "restart_policy": "always",
-  "display_name": "Write Guard",
-  "description": "Switch Chunked Write Guard threshold presets (700 / 500 / 300 lines) with live hook updates and synced rules.",
+  "display_name": "Antigravity Rail",
+  "description": "Manage Antigravity Rail modules (Chunked Write Guard, Responsive Mode, Tool Locale) with live toggles, thresholds, stats, and synced AGENTS.md rules.",
   "has_web_ui": true,
   "ui_config": {
-    "display_name": "Write Guard",
+    "display_name": "Antigravity Rail",
     "views": [
       {
         "path": "/",
         "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE",
-        "title": "Write Guard"
+        "title": "Antigravity Rail"
       }
     ]
   }

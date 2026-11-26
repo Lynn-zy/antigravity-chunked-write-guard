@@ -1,16 +1,16 @@
 {
-  "name": "chunked-write-guard",
-  "displayName": "Chunked Write Guard",
-  "version": "2.0.2",
-  "description": "Guides chunked file writes with 700/500/300 presets in the side pane and PostToolUse oversize write reminders without blocking disk writes.",
+  "name": "antigravity-rail",
+  "displayName": "Antigravity Rail",
+  "version": "3.0.0",
+  "description": "Unified Antigravity agent guardrails: chunked file writes (700/500/300 presets), responsive opening & progress replies, and Chinese tool UI summaries, controlled live from a side-pane UI.",
   "author": {
     "name": "Lynn-zy",
     "url": "https://github.com/Lynn-zy"
   },
-  "homepage": "https://github.com/Lynn-zy/antigravity-chunked-write-guard",
+  "homepage": "https://github.com/Lynn-zy/antigravity-rail",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Lynn-zy/antigravity-chunked-write-guard.git"
+    "url": "https://github.com/Lynn-zy/antigravity-rail.git"
   },
   "logo": "assets/logo.svg"
 }

@@ -6,8 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   buildPanelState,
   handleResetStats,
-  handleSetPreset,
-  handleSetReminder,
+  handleUpdateSettings,
   readChangelog,
 } from './panel-logic.mjs';
 import { PluginUpdater } from './updater.mjs';
@@ -70,18 +69,9 @@ const start = async () => {
   app.api('/api/changelog', () => readChangelog(), 'GET');
 
   app.api(
-    '/api/preset',
+    '/api/settings',
     (data) => {
-      const result = handleSetPreset(data);
-      return result.ok ? result.state : jsonErrorResponse(Response, result.status, result.error);
-    },
-    'POST',
-  );
-
-  app.api(
-    '/api/reminder',
-    (data) => {
-      const result = handleSetReminder(data);
+      const result = handleUpdateSettings(data);
       return result.ok ? result.state : jsonErrorResponse(Response, result.status, result.error);
     },
     'POST',
@@ -105,6 +95,6 @@ const start = async () => {
 };
 
 start().catch((error) => {
-  console.error('[chunked-write-guard sidecar] startup failed:', error);
+  console.error('[antigravity-rail sidecar] startup failed:', error);
   process.exit(1);
 });

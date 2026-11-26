@@ -15,7 +15,7 @@ import {
   parseSemver,
   swapRuntimeEntries,
 } from '../sidecars/panel/updater.mjs';
-import { applyPreset, readActivePresetState } from './presets.mjs';
+import { readSettings, updateSettings } from './config.mjs';
 import { readTriggerStats, recordTriggerEvent } from './stats.mjs';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -89,16 +89,16 @@ test('fetchLatestReleaseInfo prefers Releases and falls back to highest stable T
   const releaseFetch = async (url) => {
     assert.match(url, /\/releases\/latest$/);
     return createMockJsonResponse(200, {
-      tag_name: 'v1.3.0',
-      tarball_url: 'https://api.github.com/repos/Lynn-zy/antigravity-chunked-write-guard/tarball/v1.3.0',
-      html_url: 'https://github.com/Lynn-zy/antigravity-chunked-write-guard/releases/tag/v1.3.0',
+      tag_name: 'v3.1.0',
+      tarball_url: 'https://api.github.com/repos/Lynn-zy/antigravity-rail/tarball/v3.1.0',
+      html_url: 'https://github.com/Lynn-zy/antigravity-rail/releases/tag/v3.1.0',
       body: '## 新增\n- 面板内更新',
-      published_at: '2026-11-24T00:00:00Z',
+      published_at: '2026-11-26T00:00:00Z',
     });
   };
   const fromRelease = await fetchLatestReleaseInfo({ fetchImpl: releaseFetch });
   assert.equal(fromRelease.source, 'release');
-  assert.equal(fromRelease.version, '1.3.0');
+  assert.equal(fromRelease.version, '3.1.0');
   assert.match(fromRelease.releaseNotes, /面板内更新/);
 
   const tagFallbackFetch = async (url) => {
@@ -122,7 +122,7 @@ test('fetchLatestReleaseInfo prefers Releases and falls back to highest stable T
       return createMockJsonResponse(403, { message: 'rate limit' });
     }
     if (url.endsWith('/releases/latest')) {
-      return { ok: true, status: 200, url: 'https://github.com/Lynn-zy/antigravity-chunked-write-guard/releases' };
+      return { ok: true, status: 200, url: 'https://github.com/Lynn-zy/antigravity-rail/releases' };
     }
     if (url.endsWith('/tags.atom')) {
       return {
@@ -130,27 +130,27 @@ test('fetchLatestReleaseInfo prefers Releases and falls back to highest stable T
         status: 200,
         url,
         text: async () =>
-          '<feed><entry><link href="https://github.com/Lynn-zy/antigravity-chunked-write-guard/releases/tag/v1.4.0-rc.1"/></entry>' +
-          '<entry><link href="https://github.com/Lynn-zy/antigravity-chunked-write-guard/releases/tag/v1.3.5"/></entry></feed>',
+          '<feed><entry><link href="https://github.com/Lynn-zy/antigravity-rail/releases/tag/v3.4.0-rc.1"/></entry>' +
+          '<entry><link href="https://github.com/Lynn-zy/antigravity-rail/releases/tag/v3.3.5"/></entry></feed>',
       };
     }
-    if (url.endsWith('/v1.3.5/CHANGELOG.md')) {
+    if (url.endsWith('/v3.3.5/CHANGELOG.md')) {
       return {
         ok: true,
         status: 200,
         url,
         text: async () =>
-          '# Changelog\n\n## [1.3.5] - 2026-11-24\n\n### Fixed\n- 修复 Windows 目录锁导致替换失败\n\n## [1.3.0] - 2026-11-24\n- 旧记录\n',
+          '# Changelog\n\n## [3.3.5] - 2026-11-26\n\n### Fixed\n- 修复 Windows 目录锁导致替换失败\n\n## [3.0.0] - 2026-11-26\n- 旧记录\n',
       };
     }
     throw new Error(`Unexpected URL: ${url}`);
   };
   const fromPublicAtom = await fetchLatestReleaseInfo({ fetchImpl: rateLimitedFallbackFetch });
   assert.equal(fromPublicAtom.source, 'tag');
-  assert.equal(fromPublicAtom.version, '1.3.5');
+  assert.equal(fromPublicAtom.version, '3.3.5');
   assert.match(fromPublicAtom.releaseNotes, /修复 Windows 目录锁导致替换失败/);
   assert.doesNotMatch(fromPublicAtom.releaseNotes, /旧记录/);
-  assert.match(fromPublicAtom.tarballUrl, /^https:\/\/github\.com\/.*\/archive\/refs\/tags\/v1\.3\.5\.tar\.gz$/);
+  assert.match(fromPublicAtom.tarballUrl, /^https:\/\/github\.com\/.*\/archive\/refs\/tags\/v3\.3\.5\.tar\.gz$/);
 
   const allFailedFetch = async () => createMockJsonResponse(403, { message: 'rate limit' });
   await assert.rejects(() => fetchLatestReleaseInfo({ fetchImpl: allFailedFetch }), /请求频率受限/);
@@ -188,16 +188,23 @@ test('PluginUpdater end-to-end check, install, config preservation, and reload f
     const installedDir = path.join(tempDir, 'installed');
     copyRuntimeFixture(installedDir, '1.2.0');
 
-    // 预置用户的自定义档位、事后提醒开关与触发统计
-    const configPath = path.join(installedDir, 'config', 'active-preset.json');
+    // 预置用户的自定义档位、模块开关与触发统计
+    const configPath = path.join(installedDir, 'config', 'settings.json');
     const rulesPath = path.join(installedDir, 'rules', 'AGENTS.md');
     const eventsPath = path.join(installedDir, 'config', 'events.jsonl');
-    applyPreset('300', { configPath, rulesPath, reminderEnabled: false });
-    recordTriggerEvent('oversize', { eventsPath, timestamp: '2026-11-24T01:00:00.000Z' });
+    updateSettings(
+      {
+        writeGuard: { presetId: '300', hookEnabled: false },
+        responsive: { silentThreshold: 4 },
+        toolLocale: { enabled: false },
+      },
+      { configPath, rulesPath },
+    );
+    recordTriggerEvent('write_oversize', { eventsPath, timestamp: '2026-11-26T01:00:00.000Z' });
 
-    const tarballPath = packTarballFixture(tempDir, 'antigravity-chunked-write-guard-v1.3.0', '1.3.0');
+    const tarballPath = packTarballFixture(tempDir, 'antigravity-rail-v3.1.0', '3.1.0');
     const tarballBytes = fs.readFileSync(tarballPath);
-    const tarballUrl = 'https://codeload.github.com/Lynn-zy/antigravity-chunked-write-guard/tar.gz/v1.3.0';
+    const tarballUrl = 'https://codeload.github.com/Lynn-zy/antigravity-rail/tar.gz/v3.1.0';
 
     let clock = 1_000_000;
     let checkCalls = 0;
@@ -206,10 +213,10 @@ test('PluginUpdater end-to-end check, install, config preservation, and reload f
       if (url.endsWith('/releases/latest')) {
         checkCalls += 1;
         return createMockJsonResponse(200, {
-          tag_name: 'v1.3.0',
+          tag_name: 'v3.1.0',
           tarball_url: tarballUrl,
-          html_url: 'https://github.com/Lynn-zy/antigravity-chunked-write-guard/releases/tag/v1.3.0',
-          body: '新增面板内更新与断流恢复开关',
+          html_url: 'https://github.com/Lynn-zy/antigravity-rail/releases/tag/v3.1.0',
+          body: '新增面板更新测试',
         });
       }
       if (url === tarballUrl) {
@@ -231,7 +238,7 @@ test('PluginUpdater end-to-end check, install, config preservation, and reload f
     // 非法字段与非法 action 均应返回 400
     assert.equal(updater.request({ action: 'status', extra: 1 }).ok, false);
     assert.equal(updater.request({ action: 'unknown' }).ok, false);
-    assert.equal(updater.request({ action: 'apply', version: '1.3.0' }).ok, false);
+    assert.equal(updater.request({ action: 'apply', version: '3.1.0' }).ok, false);
 
     // 检查更新
     const checking = updater.request({ action: 'check' });
@@ -240,7 +247,7 @@ test('PluginUpdater end-to-end check, install, config preservation, and reload f
     const checked = await updater.waitForIdle();
     assert.equal(checked.status, 'available');
     assert.equal(checked.currentVersion, '1.2.0');
-    assert.equal(checked.latestVersion, '1.3.0');
+    assert.equal(checked.latestVersion, '3.1.0');
     assert.equal(checkCalls, 1);
 
     // 15 秒冷却期内重复 check 应复用缓存结果，不发重复网络请求
@@ -253,33 +260,35 @@ test('PluginUpdater end-to-end check, install, config preservation, and reload f
 
     // 超过计划 TTL（15 分钟）后应拒绝安装并重置为空闲态
     clock += 16 * 60_000;
-    assert.equal(updater.request({ action: 'apply', version: '1.3.0' }).ok, false);
+    assert.equal(updater.request({ action: 'apply', version: '3.1.0' }).ok, false);
 
     // 重新检查并执行完整安装
     updater.request({ action: 'check' });
     await updater.waitForIdle();
-    const applying = updater.request({ action: 'apply', version: '1.3.0' });
+    const applying = updater.request({ action: 'apply', version: '3.1.0' });
     assert.equal(applying.ok, true);
     assert.equal(applying.state.status, 'installing');
 
     const installed = await updater.waitForIdle();
     assert.equal(installed.status, 'installed');
-    assert.equal(installed.currentVersion, '1.3.0');
+    assert.equal(installed.currentVersion, '3.1.0');
 
     // 已安装待重载期间再次 check 不得覆盖 installed 状态
     clock += 60_000;
     assert.equal(updater.request({ action: 'check' }).state.status, 'installed');
 
-    // 校验插件已更新至 v1.3.0，同时保留用户配置、开关与统计日志
+    // 校验插件已更新至 v3.1.0，同时保留用户配置、开关与统计日志
     const nextManifest = JSON.parse(fs.readFileSync(path.join(installedDir, 'plugin.json'), 'utf8'));
-    assert.equal(nextManifest.version, '1.3.0');
-    const preserved = readActivePresetState({ configPath });
-    assert.equal(preserved.presetId, '300');
-    assert.equal(preserved.reminderEnabled, false);
-    assert.equal(readTriggerStats({ eventsPath }).oversizeCount, 1);
+    assert.equal(nextManifest.version, '3.1.0');
+    const preserved = readSettings({ configPath });
+    assert.equal(preserved.writeGuard.presetId, '300');
+    assert.equal(preserved.writeGuard.hookEnabled, false);
+    assert.equal(preserved.responsive.silentThreshold, 4);
+    assert.equal(preserved.toolLocale.enabled, false);
+    assert.equal(readTriggerStats({ eventsPath }).writeOversizeCount, 1);
     const syncedRules = fs.readFileSync(rulesPath, 'utf8');
     assert.match(syncedRules, /300 行 · 稳妥档/);
-    assert.match(syncedRules, /超限事后提醒：已关闭/);
+    assert.doesNotMatch(syncedRules, /## 工具状态与摘要保持中文/);
 
     // 触发重载回调
     const reloading = updater.request({ action: 'reload' });

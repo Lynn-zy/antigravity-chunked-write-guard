@@ -7,8 +7,8 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-const PLUGIN_NAME = 'chunked-write-guard';
-const DEFAULT_GITHUB_REPO = 'Lynn-zy/antigravity-chunked-write-guard';
+const PLUGIN_NAME = 'antigravity-rail';
+const DEFAULT_GITHUB_REPO = 'Lynn-zy/antigravity-rail';
 const MAX_TARBALL_BYTES = 16 * 1024 * 1024;
 const CHECK_COOLDOWN_MS = 15_000;
 const PLAN_TTL_MS = 15 * 60_000;
@@ -36,10 +36,15 @@ const REQUIRED_FILES = Object.freeze([
   'CHANGELOG.md',
   'assets/logo.svg',
   'rules/AGENTS.md',
-  'scripts/presets.mjs',
+  'scripts/config.mjs',
   'scripts/stats.mjs',
-  'scripts/hook-core.mjs',
+  'scripts/transcript.mjs',
+  'scripts/write-guard-core.mjs',
   'scripts/write-guard-hook.mjs',
+  'scripts/responsive-core.mjs',
+  'scripts/responsive-hook.mjs',
+  'scripts/tool-locale-core.mjs',
+  'scripts/tool-locale-hook.mjs',
   'sidecars/panel/sidecar.json',
   'sidecars/panel/main.mjs',
   'sidecars/panel/panel-logic.mjs',
@@ -51,7 +56,7 @@ const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)$/;
 const GITHUB_REPO_RE = /github\.com[:/]([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git|\/|$)/i;
 const REQUEST_HEADERS = Object.freeze({
   Accept: 'application/vnd.github+json',
-  'User-Agent': 'chunked-write-guard-updater',
+  'User-Agent': 'antigravity-rail-updater',
 });
 
 /**
@@ -209,7 +214,7 @@ const fetchChangelogNotes = async ({ repo, tagName, version, fetchImpl, timeoutM
       {
         fetchImpl,
         timeoutMs: Math.min(timeoutMs, 8_000),
-        headers: { 'User-Agent': 'chunked-write-guard-updater' },
+        headers: { 'User-Agent': 'antigravity-rail-updater' },
       },
     );
     if (!res.ok || typeof res.text !== 'function') return '';
@@ -223,7 +228,7 @@ const fetchPublicFallback = async ({ repo, fetchImpl, timeoutMs }) => {
   let result = null;
   const latestPageRes = await fetchWithTimeout(
     `https://github.com/${repo}/releases/latest`,
-    { fetchImpl, timeoutMs, headers: { 'User-Agent': 'chunked-write-guard-updater' } },
+    { fetchImpl, timeoutMs, headers: { 'User-Agent': 'antigravity-rail-updater' } },
   );
   await latestPageRes.body?.cancel?.().catch(() => {});
   if (latestPageRes.ok && typeof latestPageRes.url === 'string') {
@@ -249,7 +254,7 @@ const fetchPublicFallback = async ({ repo, fetchImpl, timeoutMs }) => {
   if (!result) {
     const atomRes = await fetchWithTimeout(
       `https://github.com/${repo}/tags.atom`,
-      { fetchImpl, timeoutMs, headers: { 'User-Agent': 'chunked-write-guard-updater' } },
+      { fetchImpl, timeoutMs, headers: { 'User-Agent': 'antigravity-rail-updater' } },
     );
     if (!atomRes.ok) {
       throw classifyHttpError(atomRes.status, '读取公开标签订阅');
@@ -355,7 +360,7 @@ export const downloadTarball = async (url, destPath, options = {}) => {
   const res = await fetchWithTimeout(url, {
     fetchImpl: options.fetchImpl ?? fetch,
     timeoutMs: options.timeoutMs ?? 60_000,
-    headers: { 'User-Agent': 'chunked-write-guard-updater' },
+    headers: { 'User-Agent': 'antigravity-rail-updater' },
   });
   if (!res.ok) {
     throw classifyHttpError(res.status, '下载更新包');
@@ -488,8 +493,8 @@ export const extractAndVerifyTarball = async (
 };
 
 const defaultSyncRules = async (targetDir) => {
-  const presetsUrl = pathToFileURL(path.join(targetDir, 'scripts', 'presets.mjs')).href;
-  const script = `import(${JSON.stringify(presetsUrl)}).then((m) => { const cur = m.readActivePresetState(); m.applyPreset(cur.presetId, { reminderEnabled: cur.reminderEnabled }); })`;
+  const configUrl = pathToFileURL(path.join(targetDir, 'scripts', 'config.mjs')).href;
+  const script = `import(${JSON.stringify(configUrl)}).then((m) => { m.syncRulesFromSettings(); })`;
   await execFileAsync(process.execPath, ['-e', script], {
     cwd: os.tmpdir(),
     timeout: 10_000,
@@ -793,7 +798,7 @@ export class PluginUpdater {
   }
 
   async #runInstall(plan) {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chunked-write-guard-update-'));
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-rail-update-'));
     const tarballPath = path.join(tempDir, `v${plan.version}.tar.gz`);
     const extractDir = path.join(tempDir, 'extracted');
     const backupDir = path.join(tempDir, 'backup');

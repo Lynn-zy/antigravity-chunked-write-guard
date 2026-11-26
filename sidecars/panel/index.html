@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Write Guard</title>
+  <title>Antigravity Rail</title>
   <script src="/preload.js"></script>
   <style>
     :root {
@@ -172,6 +172,108 @@
       color: var(--wg-fg);
     }
 
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      margin-bottom: 12px;
+      border-radius: 11px;
+      border: 1px solid var(--wg-border);
+      background: var(--wg-subtle);
+    }
+
+    .tab-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--wg-muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--wg-fg);
+    }
+
+    .tab-btn[aria-selected="true"] {
+      color: var(--wg-fg);
+      font-weight: 600;
+      background: var(--wg-card);
+      border-color: color-mix(in srgb, var(--wg-accent) 45%, var(--wg-border));
+    }
+
+    .tab-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: color-mix(in srgb, var(--wg-muted) 45%, transparent);
+    }
+
+    .tab-dot.on {
+      background: var(--wg-ok);
+    }
+
+    .tab-panel[hidden] {
+      display: none;
+    }
+
+    .module-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+      transition: opacity 150ms ease;
+    }
+
+    .module-body.is-disabled {
+      opacity: 0.45;
+    }
+
+    .info-card {
+      padding: 11px 13px;
+      border-radius: 10px;
+      border: 1px solid var(--wg-border);
+      background: var(--wg-card);
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--wg-muted);
+    }
+
+    .info-card-title {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--wg-fg);
+      margin-bottom: 5px;
+    }
+
+    .info-card ul {
+      margin: 4px 0 0;
+      padding-left: 16px;
+    }
+
+    .info-card li {
+      margin: 3px 0;
+    }
+
+    .info-card code {
+      padding: 0 4px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--wg-fg) 8%, transparent);
+      font: 10.5px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--wg-fg);
+    }
+
     .preset-list {
       display: flex;
       flex-direction: column;
@@ -253,6 +355,10 @@
       color: var(--wg-muted);
     }
 
+    .card-desc:last-child {
+      margin-bottom: 0;
+    }
+
     .metrics {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -292,7 +398,6 @@
     }
 
     .toggle-card {
-      margin-top: 10px;
       padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid var(--wg-border);
@@ -301,6 +406,10 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
+    }
+
+    .toggle-card.master {
+      border-color: color-mix(in srgb, var(--wg-accent) 24%, var(--wg-border));
     }
 
     .toggle-info {
@@ -382,10 +491,11 @@
     }
 
     .stats-counters {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 14px;
+      flex: 1;
+      min-width: 0;
     }
 
     .stat-item {
@@ -843,33 +953,103 @@
   <main class="page">
     <div class="header">
       <div class="title-group">
-        <span class="title">Chunked Write Guard</span>
+        <span class="title">Antigravity Rail</span>
         <button id="versionTag" type="button" class="version-tag" title="查看变更日志">v—</button>
         <button id="checkUpdateBtn" type="button" class="ghost-btn">检查更新</button>
       </div>
       <span id="activeBadge" class="badge">加载中…</span>
     </div>
-    <p class="subtitle">点击下方档位切换单次写入目标与超限警戒线。Hook 不阻断落盘，规则文件同步更新。</p>
+    <p class="subtitle">统一管理分段写入、响应汇报与工具摘要中文化。关闭模块会从常驻规则移除对应章节，Hook 调整实时生效。</p>
 
     <div class="cache-hint" role="note">
-      <strong>缓存提示：</strong>切换档位或开关会重写 <code>AGENTS.md</code>，在对话中途调整会导致下一轮前缀缓存失效重算，建议在开始新对话前选好配置。
+      <strong>缓存提示：</strong>切换模块开关或档位会重写 <code>AGENTS.md</code>，对话中途调整会导致下一轮前缀缓存失效重算，建议在开始新对话前选好配置。
     </div>
 
-    <div id="presetList" class="preset-list" role="group" aria-label="写入阈值档位"></div>
+    <div class="tabs" role="tablist" aria-label="护栏模块">
+      <button id="tabWriteGuard" type="button" role="tab" aria-selected="true" aria-controls="panelWriteGuard" class="tab-btn" data-tab="writeGuard">
+        <span id="dotWriteGuard" class="tab-dot on"></span>分段写入
+      </button>
+      <button id="tabResponsive" type="button" role="tab" aria-selected="false" aria-controls="panelResponsive" class="tab-btn" data-tab="responsive">
+        <span id="dotResponsive" class="tab-dot on"></span>响应汇报
+      </button>
+      <button id="tabToolLocale" type="button" role="tab" aria-selected="false" aria-controls="panelToolLocale" class="tab-btn" data-tab="toolLocale">
+        <span id="dotToolLocale" class="tab-dot on"></span>摘要中文
+      </button>
+    </div>
 
-    <div class="toggle-card">
-      <div class="toggle-info">
-        <div class="toggle-title">超限事后提醒</div>
-        <p id="reminderDesc" class="toggle-desc">超限写入落盘后，下一轮提醒模型按当前档位分段写入</p>
+    <section id="panelWriteGuard" class="tab-panel" role="tabpanel" aria-labelledby="tabWriteGuard">
+      <div class="toggle-card master">
+        <div class="toggle-info">
+          <div class="toggle-title">启用分段写入规范</div>
+          <p id="writeMasterDesc" class="toggle-desc">开启后注入分段写入常驻规则并启用超限检测</p>
+        </div>
+        <button id="writeEnabledToggle" type="button" role="switch" aria-checked="true" aria-label="启用分段写入模块" class="switch-btn"></button>
       </div>
-      <button id="reminderToggle" type="button" role="switch" aria-checked="true" aria-label="超限事后提醒开关" class="switch-btn"></button>
-    </div>
+      <div id="writeModuleBody" class="module-body">
+        <div id="writePresetList" class="preset-list" role="group" aria-label="写入阈值档位"></div>
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <div class="toggle-title">超限事后提醒 Hook</div>
+            <p id="writeHookDesc" class="toggle-desc">超限写入落盘后，下一轮提醒模型按当前档位分段写入</p>
+          </div>
+          <button id="writeHookToggle" type="button" role="switch" aria-checked="true" aria-label="超限事后提醒 Hook 开关" class="switch-btn"></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="panelResponsive" class="tab-panel" role="tabpanel" aria-labelledby="tabResponsive" hidden>
+      <div class="toggle-card master">
+        <div class="toggle-info">
+          <div class="toggle-title">启用先回话与途中汇报规范</div>
+          <p id="respMasterDesc" class="toggle-desc">要求模型收到消息先回应一两句，长任务中途按阶段说明发现与下一步</p>
+        </div>
+        <button id="respEnabledToggle" type="button" role="switch" aria-checked="true" aria-label="启用响应汇报模块" class="switch-btn"></button>
+      </div>
+      <div id="respModuleBody" class="module-body">
+        <div id="respPresetList" class="preset-list" role="group" aria-label="中途静默阈值档位"></div>
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <div class="toggle-title">犯规后轮间纠偏 Hook</div>
+            <p id="respHookDesc" class="toggle-desc">上一轮开场空正文直接调工具或中途连续静默达标时，下一条用户消息注入提醒</p>
+          </div>
+          <button id="respHookToggle" type="button" role="switch" aria-checked="true" aria-label="响应汇报 Hook 开关" class="switch-btn"></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="panelToolLocale" class="tab-panel" role="tabpanel" aria-labelledby="tabToolLocale" hidden>
+      <div class="toggle-card master">
+        <div class="toggle-info">
+          <div class="toggle-title">启用工具摘要中文规范</div>
+          <p id="localeMasterDesc" class="toggle-desc">无需改二进制，通过常驻规则让界面可见的工具状态和摘要保持中文短语</p>
+        </div>
+        <button id="localeEnabledToggle" type="button" role="switch" aria-checked="true" aria-label="启用工具摘要中文模块" class="switch-btn"></button>
+      </div>
+      <div id="localeModuleBody" class="module-body">
+        <div class="info-card">
+          <div class="info-card-title">覆盖字段与放行规则</div>
+          <ul>
+            <li>检查 <code>update_steps</code> 步骤标题（<code>title</code>）、<code>update_focus</code> 状态（<code>focus</code>）与 <code>run_command</code> 摘要（<code>toolSummary</code>）。</li>
+            <li>仅在出现纯英文短语时判定犯规，像「检查 Git 状态」「运行 npm test」这类中英混排技术短语正常放行。</li>
+          </ul>
+        </div>
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <div class="toggle-title">同轮立即纠偏 Hook</div>
+            <p id="localeHookDesc" class="toggle-desc">检测到纯英文摘要后，在同轮下一次模型调用前立即提醒一次，不阻断命令执行</p>
+          </div>
+          <button id="localeHookToggle" type="button" role="switch" aria-checked="true" aria-label="摘要中文同轮 Hook 开关" class="switch-btn"></button>
+        </div>
+      </div>
+    </section>
 
     <div class="status-bar">
       <div class="stats-row">
         <div class="stats-counters">
-          <span class="stat-item">超限落盘 <strong id="oversizeCount" class="stat-num">0</strong></span>
-          <span class="stat-item">事后提醒 <strong id="reminderCount" class="stat-num">0</strong></span>
+          <span class="stat-item">超限落盘 <strong id="writeOversizeCount" class="stat-num">0</strong></span>
+          <span class="stat-item">写入提醒 <strong id="writeReminderCount" class="stat-num">0</strong></span>
+          <span class="stat-item">响应纠偏 <strong id="responsiveReminderCount" class="stat-num">0</strong></span>
+          <span class="stat-item">摘要纠偏 <strong id="toolLocaleReminderCount" class="stat-num">0</strong></span>
         </div>
         <button id="resetStatsBtn" type="button" class="reset-btn" disabled>清零</button>
       </div>
@@ -932,23 +1112,66 @@
 
   <script>
     (() => {
-      const listEl = document.getElementById('presetList');
       const versionTagEl = document.getElementById('versionTag');
       const badgeEl = document.getElementById('activeBadge');
       const checkUpdateBtn = document.getElementById('checkUpdateBtn');
-      const reminderToggle = document.getElementById('reminderToggle');
-      const reminderDescEl = document.getElementById('reminderDesc');
-      const oversizeCountEl = document.getElementById('oversizeCount');
-      const reminderCountEl = document.getElementById('reminderCount');
+      const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+      const tabPanels = {
+        writeGuard: document.getElementById('panelWriteGuard'),
+        responsive: document.getElementById('panelResponsive'),
+        toolLocale: document.getElementById('panelToolLocale'),
+      };
+      const tabDots = {
+        writeGuard: document.getElementById('dotWriteGuard'),
+        responsive: document.getElementById('dotResponsive'),
+        toolLocale: document.getElementById('dotToolLocale'),
+      };
+
+      const writeEnabledToggle = document.getElementById('writeEnabledToggle');
+      const writeMasterDescEl = document.getElementById('writeMasterDesc');
+      const writeModuleBody = document.getElementById('writeModuleBody');
+      const writePresetListEl = document.getElementById('writePresetList');
+      const writeHookToggle = document.getElementById('writeHookToggle');
+      const writeHookDescEl = document.getElementById('writeHookDesc');
+
+      const respEnabledToggle = document.getElementById('respEnabledToggle');
+      const respMasterDescEl = document.getElementById('respMasterDesc');
+      const respModuleBody = document.getElementById('respModuleBody');
+      const respPresetListEl = document.getElementById('respPresetList');
+      const respHookToggle = document.getElementById('respHookToggle');
+      const respHookDescEl = document.getElementById('respHookDesc');
+
+      const localeEnabledToggle = document.getElementById('localeEnabledToggle');
+      const localeMasterDescEl = document.getElementById('localeMasterDesc');
+      const localeModuleBody = document.getElementById('localeModuleBody');
+      const localeHookToggle = document.getElementById('localeHookToggle');
+      const localeHookDescEl = document.getElementById('localeHookDesc');
+
+      const statEls = {
+        writeOversizeCount: document.getElementById('writeOversizeCount'),
+        writeReminderCount: document.getElementById('writeReminderCount'),
+        responsiveReminderCount: document.getElementById('responsiveReminderCount'),
+        toolLocaleReminderCount: document.getElementById('toolLocaleReminderCount'),
+      };
       const resetStatsBtn = document.getElementById('resetStatsBtn');
       const statusDotEl = document.getElementById('statusDot');
       const statusMsgEl = document.getElementById('statusMsg');
 
       let busy = false;
       let loading = false;
-      let activePresetId = '';
-      let reminderEnabled = true;
-      let lastStats = { oversizeCount: 0, reminderCount: 0, lastTriggeredAt: null };
+      let activeTab = 'writeGuard';
+      let currentSettings = {
+        writeGuard: { enabled: true, presetId: '500', hookEnabled: true },
+        responsive: { enabled: true, silentThreshold: 6, hookEnabled: true },
+        toolLocale: { enabled: true, hookEnabled: true },
+      };
+      let lastStats = {
+        writeOversizeCount: 0,
+        writeReminderCount: 0,
+        responsiveReminderCount: 0,
+        toolLocaleReminderCount: 0,
+        lastTriggeredAt: null,
+      };
       let statusKind = '';
 
       const apiFetch = (url, options = {}) => {
@@ -969,13 +1192,45 @@
         return data;
       };
 
-      const syncInteractiveState = () => {
-        for (const btn of listEl.querySelectorAll('button')) {
-          btn.disabled = busy;
+      const selectTab = (tabKey) => {
+        activeTab = tabKey;
+        for (const btn of tabButtons) {
+          btn.setAttribute('aria-selected', String(btn.dataset.tab === tabKey));
         }
-        reminderToggle.disabled = busy;
-        resetStatsBtn.disabled =
-          busy || (lastStats.oversizeCount === 0 && lastStats.reminderCount === 0);
+        for (const [key, panel] of Object.entries(tabPanels)) {
+          panel.hidden = key !== tabKey;
+        }
+      };
+
+      const syncInteractiveState = () => {
+        writeEnabledToggle.disabled = busy;
+        respEnabledToggle.disabled = busy;
+        localeEnabledToggle.disabled = busy;
+
+        const wgOff = !currentSettings.writeGuard.enabled;
+        writeModuleBody.classList.toggle('is-disabled', wgOff);
+        for (const btn of writePresetListEl.querySelectorAll('button')) {
+          btn.disabled = busy || wgOff;
+        }
+        writeHookToggle.disabled = busy || wgOff;
+
+        const respOff = !currentSettings.responsive.enabled;
+        respModuleBody.classList.toggle('is-disabled', respOff);
+        for (const btn of respPresetListEl.querySelectorAll('button')) {
+          btn.disabled = busy || respOff;
+        }
+        respHookToggle.disabled = busy || respOff;
+
+        const localeOff = !currentSettings.toolLocale.enabled;
+        localeModuleBody.classList.toggle('is-disabled', localeOff);
+        localeHookToggle.disabled = busy || localeOff;
+
+        const totalStats =
+          lastStats.writeOversizeCount +
+          lastStats.writeReminderCount +
+          lastStats.responsiveReminderCount +
+          lastStats.toolLocaleReminderCount;
+        resetStatsBtn.disabled = busy || totalStats === 0;
       };
 
       const setStatus = (text, kind = '') => {
@@ -992,39 +1247,47 @@
       };
 
       const renderStats = (stats) => {
-        const oversize = Number(stats?.oversizeCount ?? 0);
-        const reminder = Number(stats?.reminderCount ?? 0);
         lastStats = {
-          oversizeCount: oversize,
-          reminderCount: reminder,
+          writeOversizeCount: Number(stats?.writeOversizeCount ?? 0),
+          writeReminderCount: Number(stats?.writeReminderCount ?? 0),
+          responsiveReminderCount: Number(stats?.responsiveReminderCount ?? 0),
+          toolLocaleReminderCount: Number(stats?.toolLocaleReminderCount ?? 0),
           lastTriggeredAt: stats?.lastTriggeredAt ?? null,
         };
-        oversizeCountEl.textContent = String(oversize);
-        reminderCountEl.textContent = String(reminder);
-        oversizeCountEl.className = oversize > 0 ? 'stat-num nonzero' : 'stat-num';
-        reminderCountEl.className = reminder > 0 ? 'stat-num nonzero' : 'stat-num';
-      };
-
-      const renderReminderToggle = (enabled) => {
-        reminderEnabled = Boolean(enabled);
-        reminderToggle.setAttribute('aria-checked', String(reminderEnabled));
-        reminderDescEl.textContent = reminderEnabled
-          ? '超限写入落盘后，下一轮提醒模型按当前档位分段写入'
-          : '已关闭，仅记录超限统计，不向模型上下文注入提醒';
+        for (const [key, el] of Object.entries(statEls)) {
+          const val = lastStats[key];
+          el.textContent = String(val);
+          el.className = val > 0 ? 'stat-num nonzero' : 'stat-num';
+        }
       };
 
       const render = (state) => {
-        activePresetId = state.presetId;
+        currentSettings = state.settings;
+        const { writeGuard, responsive, toolLocale } = currentSettings;
+
         if (typeof state.version === 'string' && state.version) {
           versionTagEl.textContent = `v${state.version}`;
         }
-        badgeEl.textContent = `当前：${state.presetId} 行档`;
-        renderReminderToggle(state.reminderEnabled !== false);
-        renderStats(state.stats);
 
-        listEl.innerHTML = '';
-        for (const preset of state.presets) {
-          const isActive = preset.id === state.presetId;
+        const enabledCount = [writeGuard.enabled, responsive.enabled, toolLocale.enabled].filter(Boolean).length;
+        badgeEl.textContent = `${enabledCount}/3 模块生效`;
+
+        tabDots.writeGuard.className = writeGuard.enabled ? 'tab-dot on' : 'tab-dot';
+        tabDots.responsive.className = responsive.enabled ? 'tab-dot on' : 'tab-dot';
+        tabDots.toolLocale.className = toolLocale.enabled ? 'tab-dot on' : 'tab-dot';
+
+        writeEnabledToggle.setAttribute('aria-checked', String(writeGuard.enabled));
+        writeMasterDescEl.textContent = writeGuard.enabled
+          ? `已启用（${state.activeWritePreset.label}），常驻规则与检测已生效`
+          : '已关闭，已从 AGENTS.md 移除分段写入规则并停用检测';
+        writeHookToggle.setAttribute('aria-checked', String(writeGuard.hookEnabled));
+        writeHookDescEl.textContent = writeGuard.hookEnabled
+          ? '超限写入落盘后，下一轮提醒模型按当前档位分段写入'
+          : '已关闭，仅记录超限统计，不向模型上下文注入提醒';
+
+        writePresetListEl.innerHTML = '';
+        for (const preset of state.writePresets) {
+          const isActive = preset.id === writeGuard.presetId;
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'preset-card';
@@ -1050,9 +1313,61 @@
               </div>
             </div>
           `;
-          btn.addEventListener('click', () => switchPreset(preset.id));
-          listEl.appendChild(btn);
+          btn.addEventListener('click', () => {
+            if (!writeGuard.enabled || preset.id === writeGuard.presetId) return;
+            patchSettings(
+              { writeGuard: { presetId: preset.id } },
+              `正在切换至 ${preset.id} 行档…`,
+              (next) => `分段写入已切换为 ${next.activeWritePreset.label}（AGENTS.md 已同步）`,
+            );
+          });
+          writePresetListEl.appendChild(btn);
         }
+
+        respEnabledToggle.setAttribute('aria-checked', String(responsive.enabled));
+        respMasterDescEl.textContent = responsive.enabled
+          ? `已启用（${state.activeResponsivePreset.label}），要求先回话并在长任务途中汇报`
+          : '已关闭，已从 AGENTS.md 移除响应汇报规则并停用 Hook';
+        respHookToggle.setAttribute('aria-checked', String(responsive.hookEnabled));
+        respHookDescEl.textContent = responsive.hookEnabled
+          ? `上一轮开场空正文调工具或中途连续 ${responsive.silentThreshold} 次静默调工具时，下一条消息纠偏`
+          : '已关闭，仅靠常驻规则约束，不向模型上下文注入纠偏提醒';
+
+        respPresetListEl.innerHTML = '';
+        for (const preset of state.responsivePresets) {
+          const isActive = preset.threshold === responsive.silentThreshold;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'preset-card';
+          btn.setAttribute('aria-pressed', String(isActive));
+          btn.innerHTML = `
+            <div class="card-top">
+              <span class="card-title">${preset.label}</span>
+              <span class="action-pill">${isActive ? '● 生效中' : '切换'}</span>
+            </div>
+            <p class="card-desc">${preset.summary}</p>
+          `;
+          btn.addEventListener('click', () => {
+            if (!responsive.enabled || preset.threshold === responsive.silentThreshold) return;
+            patchSettings(
+              { responsive: { silentThreshold: preset.threshold } },
+              `正在切换静默阈值为 ${preset.threshold} 次…`,
+              (next) => `响应汇报静默阈值已切换为 ${next.activeResponsivePreset.label}`,
+            );
+          });
+          respPresetListEl.appendChild(btn);
+        }
+
+        localeEnabledToggle.setAttribute('aria-checked', String(toolLocale.enabled));
+        localeMasterDescEl.textContent = toolLocale.enabled
+          ? '已启用，要求步骤标题、聚焦状态和命令摘要使用中文短语'
+          : '已关闭，已从 AGENTS.md 移除中文摘要规则并停用 Hook';
+        localeHookToggle.setAttribute('aria-checked', String(toolLocale.hookEnabled));
+        localeHookDescEl.textContent = toolLocale.hookEnabled
+          ? '检测到纯英文摘要后，在同轮下一次模型调用前立即提醒一次，不阻断命令执行'
+          : '已关闭，仅靠常驻规则约束，不注入同轮纠偏提醒';
+
+        renderStats(state.stats);
         syncInteractiveState();
       };
 
@@ -1082,31 +1397,13 @@
         setStatus(`${failPrefix}：${errorMessage}`, 'err');
       };
 
-      const switchPreset = (presetId) => {
-        if (presetId === activePresetId) return;
-        return runMutation(
-          `正在切换至 ${presetId} 行档…`,
-          () => postJson('/api/preset', { presetId }),
-          (state) => setStatus(`已切换为 ${state.active.label}（Hook 已生效，AGENTS.md 已同步）`, 'ok'),
-          '切换失败',
+      const patchSettings = (patch, pendingText, successMsg) =>
+        runMutation(
+          pendingText,
+          () => postJson('/api/settings', patch),
+          (state) => setStatus(typeof successMsg === 'function' ? successMsg(state) : successMsg, 'ok'),
+          '更新设置失败',
         );
-      };
-
-      const toggleReminder = () => {
-        const nextEnabled = !reminderEnabled;
-        return runMutation(
-          nextEnabled ? '正在开启超限事后提醒…' : '正在关闭超限事后提醒…',
-          () => postJson('/api/reminder', { enabled: nextEnabled }),
-          (state) =>
-            setStatus(
-              state.reminderEnabled
-                ? '已开启超限事后提醒（Hook 与 AGENTS.md 已同步）'
-                : '已关闭超限事后提醒（超限落盘后仅统计，不注入上下文）',
-              'ok',
-            ),
-          '设置失败',
-        );
-      };
 
       const resetStats = () => {
         if (resetStatsBtn.disabled) return;
@@ -1329,7 +1626,7 @@
               ...updateState,
               status: 'error',
               message: '等待面板重启超时',
-              error: '请重新打开 Write Guard 侧边栏面板以加载新版本。',
+              error: '请重新打开 Antigravity Rail 侧边栏面板以加载新版本。',
             });
           }
         };
@@ -1530,7 +1827,59 @@
         if (event.target === changelogDialog) closeChangelogDialog();
       });
 
-      reminderToggle.addEventListener('click', toggleReminder);
+      const bindToggle = (el, moduleKey, fieldKey, copy) => {
+        el.addEventListener('click', () => {
+          if (fieldKey !== 'enabled' && !currentSettings[moduleKey].enabled) return;
+          const next = !currentSettings[moduleKey][fieldKey];
+          patchSettings(
+            { [moduleKey]: { [fieldKey]: next } },
+            next ? copy.onPending : copy.offPending,
+            next ? copy.onDone : copy.offDone,
+          );
+        });
+      };
+
+      for (const btn of tabButtons) {
+        btn.addEventListener('click', () => selectTab(btn.dataset.tab));
+      }
+
+      bindToggle(writeEnabledToggle, 'writeGuard', 'enabled', {
+        onPending: '正在启用分段写入模块…',
+        offPending: '正在关闭分段写入模块…',
+        onDone: '已启用分段写入模块（AGENTS.md 已同步）',
+        offDone: '已关闭分段写入模块（规则章节已移除）',
+      });
+      bindToggle(writeHookToggle, 'writeGuard', 'hookEnabled', {
+        onPending: '正在开启超限事后提醒 Hook…',
+        offPending: '正在关闭超限事后提醒 Hook…',
+        onDone: '已开启超限事后提醒 Hook',
+        offDone: '已关闭超限事后提醒 Hook（仅保留统计）',
+      });
+      bindToggle(respEnabledToggle, 'responsive', 'enabled', {
+        onPending: '正在启用响应汇报模块…',
+        offPending: '正在关闭响应汇报模块…',
+        onDone: '已启用响应汇报模块（AGENTS.md 已同步）',
+        offDone: '已关闭响应汇报模块（规则章节已移除）',
+      });
+      bindToggle(respHookToggle, 'responsive', 'hookEnabled', {
+        onPending: '正在开启响应汇报 Hook…',
+        offPending: '正在关闭响应汇报 Hook…',
+        onDone: '已开启响应汇报轮间纠偏 Hook',
+        offDone: '已关闭响应汇报 Hook（仅保留常驻规则）',
+      });
+      bindToggle(localeEnabledToggle, 'toolLocale', 'enabled', {
+        onPending: '正在启用摘要中文模块…',
+        offPending: '正在关闭摘要中文模块…',
+        onDone: '已启用摘要中文模块（AGENTS.md 已同步）',
+        offDone: '已关闭摘要中文模块（规则章节已移除）',
+      });
+      bindToggle(localeHookToggle, 'toolLocale', 'hookEnabled', {
+        onPending: '正在开启摘要中文同轮 Hook…',
+        offPending: '正在关闭摘要中文同轮 Hook…',
+        onDone: '已开启摘要中文同轮纠偏 Hook',
+        offDone: '已关闭摘要中文 Hook（仅保留常驻规则）',
+      });
+
       resetStatsBtn.addEventListener('click', resetStats);
       checkUpdateBtn.addEventListener('click', openUpdateDialog);
       updateCloseIcon.addEventListener('click', closeUpdateDialog);

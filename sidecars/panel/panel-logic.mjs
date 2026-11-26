@@ -3,12 +3,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_CONFIG_PATH,
-  PRESETS,
-  PRESET_ORDER,
-  applyPreset,
-  readActivePresetState,
-  setReminderEnabled,
-} from '../../scripts/presets.mjs';
+  RESPONSIVE_PRESETS,
+  RESPONSIVE_PRESET_ORDER,
+  WRITE_PRESETS,
+  WRITE_PRESET_ORDER,
+  readSettings,
+  updateSettings,
+} from '../../scripts/config.mjs';
 import {
   readTriggerStats,
   resetTriggerStats,
@@ -18,6 +19,8 @@ const PANEL_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = path.resolve(PANEL_DIR, '..', '..');
 const DEFAULT_MANIFEST_PATH = path.join(PLUGIN_ROOT, 'plugin.json');
 const DEFAULT_CHANGELOG_PATH = path.join(PLUGIN_ROOT, 'CHANGELOG.md');
+
+const ALLOWED_MODULE_KEYS = new Set(['writeGuard', 'responsive', 'toolLocale']);
 
 const readPluginVersion = (manifestPath = DEFAULT_MANIFEST_PATH) => {
   try {
@@ -30,7 +33,7 @@ const readPluginVersion = (manifestPath = DEFAULT_MANIFEST_PATH) => {
   }
 };
 
-const formatPresetSummary = (preset) => ({
+const formatWritePresetSummary = (preset) => ({
   id: preset.id,
   label: preset.label,
   summary: preset.summary,
@@ -41,102 +44,86 @@ const formatPresetSummary = (preset) => ({
   warnEditCombinedKb: Math.round(preset.warnEditCombinedBytes / 1024),
 });
 
+const formatResponsivePresetSummary = (preset) => ({
+  threshold: preset.threshold,
+  label: preset.label,
+  summary: preset.summary,
+});
+
 /**
- * 构建侧边栏面板所需的状态、版本号、超限事后提醒开关与触发统计快照。
+ * 构建侧边栏面板所需的完整状态快照（版本号、三模块配置与档位列表、累计触发统计）。
  * @param {{ configPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
  * @returns {Record<string, unknown>} 面板展示状态 JSON
  */
 export const buildPanelState = (options = {}) => {
   const configPath = options.configPath ?? DEFAULT_CONFIG_PATH;
-  const active = readActivePresetState({ configPath });
+  const { updatedAt, ...moduleSettings } = readSettings({ configPath });
+  const activeWritePreset = WRITE_PRESETS[moduleSettings.writeGuard.presetId];
+  const activeResponsivePreset = RESPONSIVE_PRESETS[moduleSettings.responsive.silentThreshold];
 
   return {
     version: readPluginVersion(options.manifestPath),
-    presetId: active.presetId,
-    reminderEnabled: active.reminderEnabled,
-    updatedAt: active.updatedAt,
-    active: formatPresetSummary(active.config),
-    presets: PRESET_ORDER.map((id) => formatPresetSummary(PRESETS[id])),
+    updatedAt,
+    settings: moduleSettings,
+    activeWritePreset: formatWritePresetSummary(activeWritePreset),
+    activeResponsivePreset: formatResponsivePresetSummary(activeResponsivePreset),
+    writePresets: WRITE_PRESET_ORDER.map((id) => formatWritePresetSummary(WRITE_PRESETS[id])),
+    responsivePresets: RESPONSIVE_PRESET_ORDER.map((t) =>
+      formatResponsivePresetSummary(RESPONSIVE_PRESETS[t]),
+    ),
     stats: readTriggerStats({ eventsPath: options.eventsPath }),
   };
 };
 
 /**
- * 校验面板提交的档位切换请求，档位有变化时同步更新配置与规则文件。
- * @param {Record<string, unknown>} body - 客户端提交的 JSON 对象
+ * 校验并应用面板提交的模块配置变更（模块总开关、Hook 开关或档位），有变化时落盘并重写 AGENTS.md。
+ * @param {unknown} body - 客户端提交的 JSON 对象
  * @param {{ configPath?: string, rulesPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
  * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> } | { ok: false, status: number, error: string }} 执行结果
  */
-export const handleSetPreset = (body, options = {}) => {
-  const presetId = String(body?.presetId ?? '').trim();
-  if (!(presetId in PRESETS)) {
+export const handleUpdateSettings = (body, options = {}) => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, status: 400, error: '请求体必须是 JSON 对象' };
+  }
+
+  const keys = Object.keys(body);
+  if (keys.length === 0) {
+    return { ok: false, status: 400, error: '请至少指定一个要更新的模块字段' };
+  }
+  for (const key of keys) {
+    if (!ALLOWED_MODULE_KEYS.has(key)) {
+      return { ok: false, status: 400, error: `不支持的配置模块："${key}"` };
+    }
+  }
+
+  try {
+    const { changed } = updateSettings(body, options);
+    return {
+      ok: true,
+      changed,
+      state: buildPanelState(options),
+    };
+  } catch (err) {
     return {
       ok: false,
       status: 400,
-      error: `无效档位 "${presetId}"，仅支持 ${PRESET_ORDER.join(' / ')}`,
+      error: err?.message ?? '配置参数无效',
     };
   }
-
-  const current = readActivePresetState({ configPath: options.configPath });
-  // 目标档位已持久化生效时跳过写盘，避免触发无意义的规则文件重载
-  if (current.presetId === presetId && current.updatedAt !== null) {
-    return {
-      ok: true,
-      changed: false,
-      state: buildPanelState(options),
-    };
-  }
-
-  applyPreset(presetId, options);
-  return {
-    ok: true,
-    changed: true,
-    state: buildPanelState(options),
-  };
-};
-
-/**
- * 校验面板提交的超限事后提醒开关请求，状态变化时持久化配置并同步规则文件。
- * @param {Record<string, unknown>} body - 客户端提交的 JSON 对象
- * @param {{ configPath?: string, rulesPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
- * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> } | { ok: false, status: number, error: string }} 执行结果
- */
-export const handleSetReminder = (body, options = {}) => {
-  if (typeof body?.enabled !== 'boolean') {
-    return {
-      ok: false,
-      status: 400,
-      error: '参数 enabled 必须是布尔值',
-    };
-  }
-
-  const current = readActivePresetState({ configPath: options.configPath });
-  if (current.reminderEnabled === body.enabled && current.updatedAt !== null) {
-    return {
-      ok: true,
-      changed: false,
-      state: buildPanelState(options),
-    };
-  }
-
-  setReminderEnabled(body.enabled, options);
-  return {
-    ok: true,
-    changed: true,
-    state: buildPanelState(options),
-  };
 };
 
 /**
  * 清零触发统计日志并返回最新面板状态。
- * @param {{ configPath?: string, eventsPath?: string }} [options] - 可选路径覆盖
+ * @param {{ configPath?: string, eventsPath?: string, manifestPath?: string }} [options] - 可选路径覆盖
  * @returns {{ ok: true, changed: boolean, state: Record<string, unknown> }} 执行结果
  */
 export const handleResetStats = (options = {}) => {
   const current = readTriggerStats({ eventsPath: options.eventsPath });
   if (
-    current.oversizeCount === 0 &&
-    current.reminderCount === 0 &&
+    current.writeOversizeCount === 0 &&
+    current.writeReminderCount === 0 &&
+    current.responsiveReminderCount === 0 &&
+    current.toolLocaleReminderCount === 0 &&
     current.lastTriggeredAt === null
   ) {
     return {

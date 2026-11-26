@@ -3,12 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   DEFAULT_PENDING_DIR,
-  DEFAULT_PRESET_ID,
-  getPresetConfig,
-  readActivePresetState,
-} from './presets.mjs';
+  DEFAULT_WRITE_PRESET_ID,
+  getWriteGuardConfig,
+  readSettings,
+} from './config.mjs';
 
-export const GUARD_CONFIG = Object.freeze(getPresetConfig(DEFAULT_PRESET_ID));
+export const GUARD_CONFIG = Object.freeze(getWriteGuardConfig(DEFAULT_WRITE_PRESET_ID));
 
 const STALE_PENDING_CLEANUP_MS = 24 * 60 * 60 * 1000;
 const NO_OVERSIZE = Object.freeze({ oversize: false, queued: false, notice: null });
@@ -45,15 +45,20 @@ const pickStringArg = (args, primaryKey, fallbackKey) => {
   return typeof value === 'string' ? value : '';
 };
 
-const resolveRuntimeConfig = (options) =>
-  options?.config ?? readActivePresetState({ configPath: options?.configPath }).config;
+const resolveRuntimeConfig = (options) => {
+  if (options?.config) {
+    return options.config;
+  }
+  const { writeGuard } = readSettings({ configPath: options?.configPath });
+  return getWriteGuardConfig(writeGuard.presetId, writeGuard);
+};
 
 const resolveNow = (options) =>
   typeof options?.now === 'function' ? options.now() : Date.now();
 
 const resolvePendingDir = (options) =>
   options?.pendingDir ||
-  process.env.CHUNKED_WRITE_GUARD_PENDING_DIR ||
+  process.env.ANTIGRAVITY_RAIL_PENDING_DIR ||
   DEFAULT_PENDING_DIR;
 
 const resolvePendingFilePath = (conversationId, options) => {
@@ -173,7 +178,7 @@ const appendPendingNotice = (conversationId, notice, options, nowMs) => {
 
 /**
  * 处理 PostToolUse 事件：在 write_file / edit_file 落盘成功后检测是否超限，
- * 不阻断写入；超限时按会话写入待提醒记录，供下一轮 PreInvocation 事后提醒。
+ * 不阻断写入；模块关闭时直接跳过，提醒开关关闭时仅上报超限统计不排队提醒。
  * @param {Record<string, unknown>} payload - Antigravity 传入的 stdin JSON
  * @param {{ config?: Record<string, unknown>, configPath?: string, pendingDir?: string, now?: () => number }} [options] - 可选配置覆盖
  * @returns {{ oversize: boolean, queued: boolean, notice: Record<string, unknown> | null }} 检测结果
@@ -191,6 +196,10 @@ export const handlePostToolUse = (payload, options = {}) => {
   }
 
   const config = resolveRuntimeConfig(options);
+  if (config.enabled === false) {
+    return NO_OVERSIZE;
+  }
+
   const args = toolCall?.args ?? {};
   const notice =
     toolName === 'write_file' ? inspectWriteFile(args, config) : inspectEditFile(args, config);
@@ -199,7 +208,7 @@ export const handlePostToolUse = (payload, options = {}) => {
   }
 
   const queued =
-    config.reminderEnabled !== false &&
+    config.hookEnabled !== false &&
     appendPendingNotice(payload?.conversationId, notice, options, resolveNow(options));
 
   return { oversize: true, queued, notice };
@@ -258,8 +267,8 @@ const parsePendingNotices = (raw, ttlMs, nowMs) => {
 };
 
 /**
- * 处理 PreInvocation 事件：仅当当前会话存在未过期的超限落盘记录且提醒开关启用时，
- * 读取并删除记录，注入一条事后提醒；其余场景直接返回 {}，不污染上下文。
+ * 处理 PreInvocation 事件：仅当分段写入模块与事后提醒开关均启用且存在未过期超限记录时，
+ * 读取并删除记录，注入一条事后提醒；其余场景直接返回 {}。
  * @param {Record<string, unknown>} payload - Antigravity 传入的 stdin JSON
  * @param {{ config?: Record<string, unknown>, configPath?: string, pendingDir?: string, now?: () => number }} [options] - 可选配置覆盖
  * @returns {Record<string, unknown>} PreInvocation 响应对象
@@ -270,7 +279,7 @@ export const handlePreInvocation = (payload, options = {}) => {
     return {};
   }
 
-  // 快路径：99% 正常轮次无待提醒文件，单次读取 ENOENT 直接退出不读配置
+  // 快路径：正常轮次无待提醒文件，单次读取 ENOENT 直接退出不读配置
   let raw = '';
   try {
     raw = fs.readFileSync(pendingPath, 'utf8');
@@ -288,7 +297,7 @@ export const handlePreInvocation = (payload, options = {}) => {
   const notices = parsePendingNotices(raw, config.pendingReminderTtlMs, nowMs);
   pruneStalePendingFiles(path.dirname(pendingPath), nowMs);
 
-  if (config.reminderEnabled === false || notices.length === 0) {
+  if (config.enabled === false || config.hookEnabled === false || notices.length === 0) {
     return {};
   }
 

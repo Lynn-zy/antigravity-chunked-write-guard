@@ -1,18 +1,18 @@
 {
-  "name": "antigravity-chunked-write-guard",
-  "version": "2.0.2",
-  "description": "Antigravity plugin that guides chunked file writes with a 700/500/300 side-pane switcher and non-blocking PostToolUse oversize write reminders.",
+  "name": "antigravity-rail",
+  "version": "3.0.0",
+  "description": "Unified Antigravity agent guardrails with live side-pane controls for chunked writes, responsive replies, and Chinese tool summaries.",
   "type": "module",
   "license": "MIT",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test scripts/hook-core.test.mjs scripts/updater.test.mjs"
+    "test": "node --test scripts/write-guard.test.mjs scripts/responsive-core.test.mjs scripts/tool-locale-core.test.mjs scripts/panel.test.mjs scripts/updater.test.mjs"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Lynn-zy/antigravity-chunked-write-guard.git"
+    "url": "https://github.com/Lynn-zy/antigravity-rail.git"
   },
   "author": "Lynn-zy"
 }
