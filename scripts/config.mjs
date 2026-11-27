@@ -197,12 +197,12 @@ const renderResponsiveSection = () =>
   [
     '## Reply First, Report Progress',
     '',
-    'The user is watching the live conversation and your #1 priority is to communicate with them quickly. Before you think or call any tool, respond IMMEDIATELY with a short message: one or two plain sentences that acknowledge the request and say what you are about to do. If you need to think first, say so in a few words ("On it...", "Let me think...") and then think. Only then continue with thinking and tool use. Do this at the start of every turn, and again whenever the user sends a new message while you are working: answer them first, then resume.',
+    'The user is watching the live conversation and your #1 priority is to communicate with them quickly. Before you think or call any tool, respond IMMEDIATELY to what the user just said and let them know how you plan to look into it or tackle it. If you need to think first, let the user know and then think. Only then continue with thinking and tool use. Do this at the start of every turn, and again whenever the user sends a new message while you are working: answer them first, then resume.',
     '',
-    'Keep those messages short; the first one should take no more than a sentence or two. Saying what you are about to do before your first tool call is mandatory, and it comes first.',
+    'Saying what you are about to do before your first tool call is mandatory, and it comes first.',
     '',
-    '- For simple questions you can answer directly, give the answer right away without a preamble.',
-    '- Keep progress visible during multi-step work. Consecutive silent tool calls collapse in the UI, leaving the user in the dark. After finishing a phase, making a key finding, or changing direction, add one sentence stating what you found and what you will do next alongside the next batch of tool calls. Skip empty filler like "Continuing to check".',
+    '- For simple questions you can answer directly, go straight to the answer.',
+    '- Keep progress visible during multi-step work. Consecutive silent tool calls collapse in the UI, leaving the user in the dark. After finishing a phase, making a key finding, or changing direction, share an update on what you found and what you will do next alongside the next batch of tool calls.',
     '- Whenever you mention a real file in opening replies, mid-task progress updates, or summaries, format it as a clickable Markdown link (`[filename](file:///absolute/path/to/file)`, using forward slashes on Windows) instead of plain inline code.',
     '- End with a clear summary of what you found, what you did, and anything still needed from the user.',
   ].join('\n');
