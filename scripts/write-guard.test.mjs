@@ -97,9 +97,10 @@ test('PostToolUse detects oversize writes at exact 500-preset boundaries and que
 
     const injected = handlePreInvocation({ conversationId: 'conv-boundary' }, opts);
     const msg = injected.injectSteps[0].systemMessage.systemMessage;
-    assert.match(msg, /已放行落盘/);
-    assert.match(msg, /801 行/);
-    assert.match(msg, /≤ 500 行/);
+    assert.match(msg, /was allowed to finish/);
+    assert.match(msg, /801 lines/);
+    assert.match(msg, /≤ 500-line/);
+    assert.doesNotMatch(msg, /[\u4e00-\u9fff]/);
 
     // 消费一次后再次进入 PreInvocation 不再重复注入
     assert.deepEqual(handlePreInvocation({ conversationId: 'conv-boundary' }, opts), {});
@@ -163,9 +164,9 @@ test('PostToolUse ignores failed calls, pure deletions, and merges Append + comb
 
     const merged = handlePreInvocation({ conversationId: 'conv-edge' }, opts);
     const text = merged.injectSteps[0].systemMessage.systemMessage;
-    assert.match(text, /2 次超限写入已放行落盘/);
+    assert.match(text, /2 oversize writes were allowed to finish/);
     assert.match(text, /write_file \(Append\)/);
-    assert.match(text, /Target \+ Replacement 合计 950 行/);
+    assert.match(text, /Target \+ Replacement: 950 lines/);
   } finally {
     ws.cleanup();
   }
@@ -227,7 +228,7 @@ test('module enabled and hookEnabled switches control detection and injection dy
       { conversationId: 'conv-sw' },
       { configPath: ws.configPath, pendingDir: ws.pendingDir },
     );
-    assert.match(out.injectSteps[0].systemMessage.systemMessage, /≤ 300 行/);
+    assert.match(out.injectSteps[0].systemMessage.systemMessage, /≤ 300-line/);
   } finally {
     ws.cleanup();
   }
@@ -282,7 +283,7 @@ test('CLI write-guard-hook runs post-tool-use -> pre-invocation, records stats, 
       encoding: 'utf8',
     });
     assert.equal(preRun.status, 0);
-    assert.match(JSON.parse(preRun.stdout).injectSteps[0].systemMessage.systemMessage, /1200 行/);
+    assert.match(JSON.parse(preRun.stdout).injectSteps[0].systemMessage.systemMessage, /1200 lines/);
 
     const stats = readTriggerStats({ eventsPath: ws.eventsPath });
     assert.equal(stats.writeOversizeCount, 1);

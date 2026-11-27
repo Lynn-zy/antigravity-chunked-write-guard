@@ -20,6 +20,20 @@ export const parseStep = (line) => {
 };
 
 /**
+ * 解析 transcript.jsonl 中 tool_calls[].args 被序列化为 JSON 字符串的字段值；非 JSON 原样返回。
+ * @param {unknown} value - 工具参数原始字段值
+ * @returns {unknown} 反序列化后的值或原值
+ */
+export const parseArgValue = (value) => {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
+/**
  * 读取会话记录末尾指定字节窗口内的非空行；windowBytes 为 Infinity 时读取整份文件。
  * @param {string} transcriptPath - transcript.jsonl 路径
  * @param {number} windowBytes - 读取末尾的最大字节数

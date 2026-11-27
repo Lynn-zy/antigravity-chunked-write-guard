@@ -6,7 +6,12 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { updateSettings } from './config.mjs';
-import { REMINDER, handlePreInvocation } from './responsive-core.mjs';
+import {
+  REMINDER,
+  buildFileLinkReminder,
+  extractBacktickFileCandidates,
+  handlePreInvocation,
+} from './responsive-core.mjs';
 import { readTriggerStats } from './stats.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -63,6 +68,7 @@ const createTempEnv = () => {
 };
 
 test('首条用户消息与合规上一轮不触发提醒，开场空正文调用工具触发提醒', () => {
+  assert.doesNotMatch(REMINDER, /[\u4e00-\u9fff]/);
   const ws = createTempEnv();
   try {
     const firstTurn = ws.writeTranscript([userInput('修一下登录页的报错')]);
@@ -227,6 +233,100 @@ test('CLI responsive-hook 输出提醒并记录 responsive_reminder 统计，非
     });
     assert.equal(bad.status, 0);
     assert.deepEqual(JSON.parse(bad.stdout), {});
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test('同轮检测已知工作区文件使用纯反引号时立即提醒改用可点击链接，同轮去重且对代码/链接/泛指文件名零误报', () => {
+  const ws = createTempEnv();
+  try {
+    // 1. 刚编辑过 config.mjs 与 updater.mjs，途中汇报却用了纯反引号 -> 立即提醒并点名漏链文件
+    const unlinked = ws.writeTranscript([
+      userInput('帮我国际化一下面板'),
+      plannerResponse('已完成 `config.mjs` 与 `sidecars/panel/updater.mjs` 的修改，继续改前端。', [
+        { name: 'edit_file', args: { Path: JSON.stringify('D:\\private\\antigravity-rail\\scripts\\config.mjs') } },
+        { name: 'edit_file', args: { Path: JSON.stringify('D:\\private\\antigravity-rail\\sidecars\\panel\\updater.mjs') } },
+      ]),
+      toolResult(),
+    ]);
+    const reminded = handlePreInvocation({ transcriptPath: unlinked }, { configPath: ws.configPath });
+    const expectedMsg = buildFileLinkReminder(['config.mjs', 'sidecars/panel/updater.mjs']);
+    assert.deepEqual(reminded, { injectSteps: [{ systemMessage: { systemMessage: expectedMsg } }] });
+    assert.match(expectedMsg, /<responsive-file-links>/);
+    assert.match(expectedMsg, /`config\.mjs`, `sidecars\/panel\/updater\.mjs`/);
+
+    // 2. 同轮已经提醒过一次后不再重复注入
+    const dedup = ws.writeTranscript([
+      userInput('帮我国际化一下面板'),
+      plannerResponse('刚改了 `updater.mjs`。', [
+        { name: 'edit_file', args: { Path: JSON.stringify('D:\\repo\\sidecars\\panel\\updater.mjs') } },
+      ]),
+      toolResult(),
+      systemMessage(buildFileLinkReminder(['updater.mjs'])),
+      plannerResponse('又改了 `updater.mjs`。', []),
+      toolResult(),
+    ]);
+    assert.deepEqual(handlePreInvocation({ transcriptPath: dedup }, { configPath: ws.configPath }), {});
+
+    // 3. 零误报：已有 Markdown 链接、反引号包在链接内、围栏代码块、命令片段、代码属性及未接触过的泛指文件名
+    const clean = ws.writeTranscript([
+      userInput('检查一下面板'),
+      plannerResponse(
+        [
+          '已更新 [updater.mjs](file:///D:/repo/sidecars/panel/updater.mjs) 与 [`index.html`](file:///D:/repo/sidecars/panel/index.html)。',
+          '检查了 `res.json`、`state.version`、`node scripts/updater.mjs` 以及未生成的 `config/settings.json`。',
+          '```js',
+          '// `updater.mjs` inside code fence should be ignored',
+          '```',
+        ].join('\n'),
+        [
+          { name: 'edit_file', args: { Path: JSON.stringify('D:\\repo\\sidecars\\panel\\updater.mjs') } },
+          { name: 'read_file', args: { Path: JSON.stringify('D:\\repo\\sidecars\\panel\\index.html') } },
+        ],
+      ),
+      toolResult(),
+    ]);
+    assert.deepEqual(handlePreInvocation({ transcriptPath: clean }, { configPath: ws.configPath }), {});
+
+    // 4. 早期轮次读过的文件跨越尾部窗口时，回退读全文件依然能精准捕获
+    const crossWindow = ws.writeTranscript([
+      userInput('先读一下配置'),
+      plannerResponse('先读。', [
+        { name: 'read_file', args: { Path: JSON.stringify('D:\\repo\\scripts\\config.mjs') } },
+      ]),
+      { type: 'GENERIC', source: 'MODEL', content: 'x'.repeat(4096) },
+      plannerResponse('读完了。', []),
+      userInput('改一下'),
+      plannerResponse('接下来改 `config.mjs:196` 的规则模板。', [{ name: 'list_dir', args: {} }]),
+      toolResult(),
+    ]);
+    const crossOut = handlePreInvocation(
+      { transcriptPath: crossWindow },
+      { configPath: ws.configPath, windowBytes: 1024 },
+    );
+    assert.equal(
+      crossOut.injectSteps[0].systemMessage.systemMessage,
+      buildFileLinkReminder(['config.mjs:196']),
+    );
+
+    // 5. 同轮前面旧消息（例如 ask_question 之前的方案讨论）含反引号，但最近一条已全部用链接 -> 不翻旧账
+    const noOldGrudge = ws.writeTranscript([
+      userInput('给我看看方案'),
+      plannerResponse('比如讨论里的 `updater.mjs` 举例。', [{ name: 'ask_question', args: {} }]),
+      toolResult(),
+      plannerResponse('已更新 [updater.mjs](file:///D:/repo/sidecars/panel/updater.mjs)。', [
+        { name: 'edit_file', args: { Path: JSON.stringify('D:\\repo\\sidecars\\panel\\updater.mjs') } },
+      ]),
+      toolResult(),
+    ]);
+    assert.deepEqual(handlePreInvocation({ transcriptPath: noOldGrudge }, { configPath: ws.configPath }), {});
+
+    // 6. extractBacktickFileCandidates 校验链接、命令与双反引号转义示例过滤
+    assert.deepEqual(
+      extractBacktickFileCandidates('看 [a.mjs](file:///a.mjs)、`` `updater.mjs` ``、`node a.mjs` 和 `b.mjs`'),
+      [{ raw: 'b.mjs', normalizedKey: 'b.mjs' }],
+    );
   } finally {
     ws.cleanup();
   }

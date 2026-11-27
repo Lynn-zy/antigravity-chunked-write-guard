@@ -19,8 +19,8 @@ const SHARED_WRITE_LIMITS = Object.freeze({
 export const WRITE_PRESETS = Object.freeze({
   '300': Object.freeze({
     id: '300',
-    label: '300 行 · 稳妥档',
-    summary: '网络波动大或上下文较长时使用，减小单次写入行数',
+    label: '300 lines · Conservative',
+    summary: 'Smaller writes per step for unstable networks or long contexts',
     softTargetLines: 300,
     warnWriteLines: 500,
     warnWriteBytes: 28 * 1024,
@@ -29,8 +29,8 @@ export const WRITE_PRESETS = Object.freeze({
   }),
   '500': Object.freeze({
     id: '500',
-    label: '500 行 · 标准档',
-    summary: '日常默认，常规源码文件可一次写完，超限时事后提醒',
+    label: '500 lines · Standard',
+    summary: 'Balanced default for typical source files with post-write reminders',
     softTargetLines: 500,
     warnWriteLines: 800,
     warnWriteBytes: 48 * 1024,
@@ -39,8 +39,8 @@ export const WRITE_PRESETS = Object.freeze({
   }),
   '700': Object.freeze({
     id: '700',
-    label: '700 行 · 宽松档',
-    summary: '网络稳定且常写较长单文件时使用，放宽单次行数目标',
+    label: '700 lines · Relaxed',
+    summary: 'Higher per-write target for stable networks and longer single files',
     softTargetLines: 700,
     warnWriteLines: 1100,
     warnWriteBytes: 64 * 1024,
@@ -58,18 +58,18 @@ export const DEFAULT_WRITE_PRESET_ID = '500';
 export const RESPONSIVE_PRESETS = Object.freeze({
   4: Object.freeze({
     threshold: 4,
-    label: '4 次 · 敏感档',
-    summary: '中途连续 4 次无正文调用工具即判犯规，更快拉回可见性',
+    label: '4 calls · Sensitive',
+    summary: 'Triggers after 4 consecutive silent tool calls to restore visibility faster',
   }),
   6: Object.freeze({
     threshold: 6,
-    label: '6 次 · 标准档',
-    summary: '日常默认，允许单阶段连续读查，达 6 次无正文调工具后下一轮纠偏',
+    label: '6 calls · Standard',
+    summary: 'Balanced default allowing brief read/search bursts before reminding',
   }),
   10: Object.freeze({
     threshold: 10,
-    label: '10 次 · 宽松档',
-    summary: '适合深度排查或大型重构，减少中途静默触发纠偏',
+    label: '10 calls · Relaxed',
+    summary: 'Suited for deep investigations or large refactors with fewer interruptions',
   }),
 });
 
@@ -175,19 +175,19 @@ const renderWriteGuardSection = (writeGuard) => {
   const writeKb = Math.round(preset.warnWriteBytes / 1024);
   const combinedKb = Math.round(preset.warnEditCombinedBytes / 1024);
   const lines = [
-    '## 分段写入规范',
+    '## Chunked Write Guard',
     '',
-    '为避免单次输出过长拖慢流式响应并让长文件改动尽早落盘，写入或修改文件时遵守以下限制：',
+    'To avoid slow streaming responses and persist large edits incrementally, follow these limits when writing or editing files:',
     '',
-    `1. **单次写入目标 ≤ ${preset.softTargetLines} 行**：每次 \`write_file\`（含 \`Append: true\`）或 \`edit_file\` 的新内容控制在 ${preset.softTargetLines} 行以内。`,
-    `2. **长文件分步写入**：预计超过 ${preset.softTargetLines} 行的文件（如单页 HTML 原型、大型组件、长文档或脚本），拆成多步完成。`,
-    `   - 第 1 步用 \`write_file\` 写入骨架与核心结构（≤ ${preset.softTargetLines} 行）。`,
-    '   - 后续按模块分次调用 `write_file(Append: true)` 或 `edit_file` 补齐，让每段改动尽快落盘。',
+    `1. **Target ≤ ${preset.softTargetLines} lines per write**: Keep new content in each \`write_file\` (including \`Append: true\`) or \`edit_file\` call within ${preset.softTargetLines} lines.`,
+    `2. **Split large files across steps**: For files expected to exceed ${preset.softTargetLines} lines (e.g., single-file HTML prototypes, large components, long docs, or scripts), write them in chunks:`,
+    `   - Step 1: write the skeleton and core structure with \`write_file\` (≤ ${preset.softTargetLines} lines).`,
+    '   - Subsequent steps: fill in remaining sections incrementally with `write_file(Append: true)` or targeted `edit_file` calls.',
   ];
 
   if (writeGuard.hookEnabled) {
     lines.push(
-      `3. **超限检测与事后提醒**：单次写入超过 **${preset.warnWriteLines} 行**或 **${writeKb} KB**（\`edit_file\` 合计超过 ${preset.warnEditCombinedLines} 行或 ${combinedKb} KB）时不会阻断落盘，但下一轮会提醒你回到 ≤ ${preset.softTargetLines} 行的分段写入。`,
+      `3. **Oversize detection & post-write reminder**: Writes exceeding **${preset.warnWriteLines} lines** or **${writeKb} KB** (\`edit_file\` totaling over ${preset.warnEditCombinedLines} lines or ${combinedKb} KB) are never blocked, but the next turn will remind you to return to ≤ ${preset.softTargetLines}-line chunked writes.`,
     );
   }
   return lines.join('\n');
@@ -195,24 +195,23 @@ const renderWriteGuardSection = (writeGuard) => {
 
 const renderResponsiveSection = () =>
   [
-    '## 先回话，再动手',
+    '## Reply First, Report Progress',
     '',
-    '用户正看着对话等你回应。每次收到用户的新消息，先用一两句话回复，再调用工具。',
+    'The user is watching the live conversation and your #1 priority is to communicate with them quickly. Before you think or call any tool, respond IMMEDIATELY with a short message: one or two plain sentences that acknowledge the request and say what you are about to do. If you need to think first, say so in a few words ("On it...", "Let me think...") and then think. Only then continue with thinking and tool use. Do this at the start of every turn, and again whenever the user sends a new message while you are working: answer them first, then resume.',
     '',
-    '- 说明你对任务的理解和第一步要做什么，例如"先看一下 `parseConfig` 的调用方，确认改签名会影响哪些地方。"',
-    '- 需要先想清楚再动手时，就说一句"我先想一下"。',
-    '- 简单问题能直接回答的，直接给出答案，不必先预告。',
-    '- 这句话和随后的工具调用放在同一条回复里。说完不要停下来等用户，接着工作。',
-    '- 工作途中也要让用户看到进展。连续的工具调用在界面上会折叠成一个步骤，用户只能从正文了解你做到了哪里。每完成一个阶段、有了关键发现或改变方向时，用一句话说明发现了什么、接下来做什么，和下一批工具调用放在同一条回复里。只说发现和下一步，"继续查看"这类没有信息的话不要写。',
-    '- 工作途中收到用户的新消息，同样先回应这条消息，再继续原来的工作。',
-    '- 最后的回复也一样：说清发现了什么、做了什么、还需要用户提供什么，说完就结束。',
+    'Keep those messages short; the first one should take no more than a sentence or two. Saying what you are about to do before your first tool call is mandatory, and it comes first.',
+    '',
+    '- For simple questions you can answer directly, give the answer right away without a preamble.',
+    '- Keep progress visible during multi-step work. Consecutive silent tool calls collapse in the UI, leaving the user in the dark. After finishing a phase, making a key finding, or changing direction, add one sentence stating what you found and what you will do next alongside the next batch of tool calls. Skip empty filler like "Continuing to check".',
+    '- Whenever you mention a real file in opening replies, mid-task progress updates, or summaries, format it as a clickable Markdown link (`[filename](file:///absolute/path/to/file)`, using forward slashes on Windows) instead of plain inline code.',
+    '- End with a clear summary of what you found, what you did, and anything still needed from the user.',
   ].join('\n');
 
 const renderToolLocaleSection = () =>
   [
-    '## 工具状态与摘要保持中文',
+    '## Match User\'s Language for Tool Summaries',
     '',
-    '- 调用 `update_steps` 的步骤标题（`title`）、`update_focus` 的状态说明（`focus`）以及 `run_command` 的 `toolSummary` 时，一律使用中文短语（可保留必要的英文术语或命令名，如"运行 `npm test`"、"检查 Git 状态"）。',
+    '- Write `update_steps` step titles (`title`), `update_focus` status messages (`focus`), and `run_command` `toolSummary` values in the same language the user is using. Necessary code identifiers, paths, or CLI command names may stay in English (e.g., matching the user\'s language around `npm test` or `git status`).',
   ].join('\n');
 
 /**
@@ -228,29 +227,29 @@ export const renderAgentsRule = (settings) => {
   if (normalized.writeGuard.enabled) {
     const preset = WRITE_PRESETS[normalized.writeGuard.presetId];
     summaryParts.push(
-      `分段写入：${preset.label}${normalized.writeGuard.hookEnabled ? '' : '（仅规则）'}`,
+      `Write Guard: ${preset.label}${normalized.writeGuard.hookEnabled ? '' : ' (rules only)'}`,
     );
     sections.push(renderWriteGuardSection(normalized.writeGuard));
   }
   if (normalized.responsive.enabled) {
     summaryParts.push(
-      `响应汇报：静默 ${normalized.responsive.silentThreshold} 次档${normalized.responsive.hookEnabled ? '' : '（仅规则）'}`,
+      `Responsive Mode: ${normalized.responsive.silentThreshold} calls${normalized.responsive.hookEnabled ? '' : ' (rules only)'}`,
     );
     sections.push(renderResponsiveSection());
   }
   if (normalized.toolLocale.enabled) {
-    summaryParts.push(`摘要中文：已开启${normalized.toolLocale.hookEnabled ? '' : '（仅规则）'}`);
+    summaryParts.push(`Tool Locale: On${normalized.toolLocale.hookEnabled ? '' : ' (rules only)'}`);
     sections.push(renderToolLocaleSection());
   }
 
   if (sections.length === 0) {
-    return '<!-- Antigravity Rail：全部护栏模块已关闭，可在侧边栏面板重新开启 -->\n';
+    return '<!-- Antigravity Rail: all guardrail modules are disabled. Re-enable them in the Antigravity Rail side pane. -->\n';
   }
 
   return [
     '# Antigravity Rail',
     '',
-    `<!-- 当前生效模块：${summaryParts.join(' ｜ ')}（可在 Antigravity Rail 侧边栏面板调整） -->`,
+    `<!-- Active modules: ${summaryParts.join(' | ')} (adjust in the Antigravity Rail side pane) -->`,
     '',
     sections.join('\n\n'),
     '',
@@ -276,14 +275,14 @@ const settingsEqual = (a, b) =>
 
 const assertPlainObject = (value, name) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`参数 ${name} 必须是对象`);
+    throw new Error(`Parameter "${name}" must be an object`);
   }
 };
 
 const applyBooleanField = (source, target, field, label) => {
   if (source[field] === undefined) return;
   if (typeof source[field] !== 'boolean') {
-    throw new Error(`${label} 必须是布尔值`);
+    throw new Error(`"${label}" must be a boolean`);
   }
   target[field] = source[field];
 };
@@ -314,7 +313,9 @@ export const updateSettings = (patch, options = {}) => {
       if (patch.writeGuard.presetId !== undefined) {
         const key = String(patch.writeGuard.presetId).trim();
         if (!(key in WRITE_PRESETS)) {
-          throw new Error(`无效分段写入档位 "${key}"，仅支持 ${WRITE_PRESET_ORDER.join(' / ')}`);
+          throw new Error(
+            `Invalid writeGuard preset "${key}", expected one of ${WRITE_PRESET_ORDER.join(' / ')}`,
+          );
         }
         next.writeGuard.presetId = key;
       }
@@ -328,7 +329,7 @@ export const updateSettings = (patch, options = {}) => {
         const threshold = Number(patch.responsive.silentThreshold);
         if (!(threshold in RESPONSIVE_PRESETS)) {
           throw new Error(
-            `无效静默阈值档位 "${patch.responsive.silentThreshold}"，仅支持 ${RESPONSIVE_PRESET_ORDER.join(' / ')}`,
+            `Invalid responsive silentThreshold "${patch.responsive.silentThreshold}", expected one of ${RESPONSIVE_PRESET_ORDER.join(' / ')}`,
           );
         }
         next.responsive.silentThreshold = threshold;

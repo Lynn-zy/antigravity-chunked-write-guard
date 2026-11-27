@@ -83,16 +83,16 @@ export const buildPanelState = (options = {}) => {
  */
 export const handleUpdateSettings = (body, options = {}) => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    return { ok: false, status: 400, error: '请求体必须是 JSON 对象' };
+    return { ok: false, status: 400, error: 'Request body must be a JSON object' };
   }
 
   const keys = Object.keys(body);
   if (keys.length === 0) {
-    return { ok: false, status: 400, error: '请至少指定一个要更新的模块字段' };
+    return { ok: false, status: 400, error: 'Specify at least one module field to update' };
   }
   for (const key of keys) {
     if (!ALLOWED_MODULE_KEYS.has(key)) {
-      return { ok: false, status: 400, error: `不支持的配置模块："${key}"` };
+      return { ok: false, status: 400, error: `Unsupported settings module: "${key}"` };
     }
   }
 
@@ -107,7 +107,7 @@ export const handleUpdateSettings = (body, options = {}) => {
     return {
       ok: false,
       status: 400,
-      error: err?.message ?? '配置参数无效',
+      error: err?.message ?? 'Invalid settings payload',
     };
   }
 };

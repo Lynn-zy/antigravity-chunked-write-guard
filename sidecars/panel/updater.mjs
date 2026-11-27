@@ -125,11 +125,11 @@ export const readInstalledManifest = (pluginDir) => {
   const manifestPath = path.join(pluginDir, 'plugin.json');
   const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   if (parsed?.name !== PLUGIN_NAME) {
-    throw new Error(`插件清单名称不匹配：期望 "${PLUGIN_NAME}"，实际 "${parsed?.name ?? ''}"`);
+    throw new Error(`Plugin manifest name mismatch: expected "${PLUGIN_NAME}", got "${parsed?.name ?? ''}"`);
   }
   const semver = parseSemver(parsed?.version);
   if (!semver) {
-    throw new Error(`插件清单版本号无效："${parsed?.version ?? ''}"`);
+    throw new Error(`Invalid plugin manifest version: "${parsed?.version ?? ''}"`);
   }
   return {
     name: PLUGIN_NAME,
@@ -145,9 +145,9 @@ const fetchWithTimeout = async (url, { fetchImpl = fetch, timeoutMs = 15_000, he
     return await fetchImpl(url, { headers, redirect: 'follow', signal: controller.signal });
   } catch (err) {
     if (err?.name === 'AbortError') {
-      throw new Error('请求 GitHub 超时，请检查网络连接后重试');
+      throw new Error('Request to GitHub timed out. Check your network connection and retry.');
     }
-    throw new Error(`无法连接 GitHub：${err?.message ?? '网络错误'}`);
+    throw new Error(`Unable to reach GitHub: ${err?.message ?? 'network error'}`);
   } finally {
     clearTimeout(timer);
   }
@@ -155,9 +155,9 @@ const fetchWithTimeout = async (url, { fetchImpl = fetch, timeoutMs = 15_000, he
 
 const classifyHttpError = (status, label) => {
   if (status === 403 || status === 429) {
-    return new Error('GitHub API 请求频率受限，请稍后再试');
+    return new Error('GitHub API rate limit exceeded. Please try again later.');
   }
-  return new Error(`${label}失败（HTTP ${status}）`);
+  return new Error(`${label} failed (HTTP ${status})`);
 };
 
 const isRateLimitStatus = (status) => status === 403 || status === 429;
@@ -192,7 +192,7 @@ const pickHighestStableTag = (repo, tagItems) => {
     }
   }
   if (!best) {
-    throw new Error('远端仓库暂未发现可用的稳定版本标签');
+    throw new Error('No stable release tags found in remote repository');
   }
   return best;
 };
@@ -257,7 +257,7 @@ const fetchPublicFallback = async ({ repo, fetchImpl, timeoutMs }) => {
       { fetchImpl, timeoutMs, headers: { 'User-Agent': 'antigravity-rail-updater' } },
     );
     if (!atomRes.ok) {
-      throw classifyHttpError(atomRes.status, '读取公开标签订阅');
+      throw classifyHttpError(atomRes.status, 'Fetch public tags feed');
     }
     const xml = await atomRes.text();
     const tagNames = Array.from(xml.matchAll(/\/releases\/tag\/([^"'<\s]+)/g), (m) => m[1]);
@@ -310,7 +310,7 @@ export const fetchLatestReleaseInfo = async (options = {}) => {
   } else if (isRateLimitStatus(latestRes.status)) {
     return fetchPublicFallback({ repo, fetchImpl, timeoutMs });
   } else if (latestRes.status !== 404) {
-    throw classifyHttpError(latestRes.status, '检查更新');
+    throw classifyHttpError(latestRes.status, 'Check updates');
   }
 
   const tagsRes = await fetchWithTimeout(
@@ -321,11 +321,11 @@ export const fetchLatestReleaseInfo = async (options = {}) => {
     return fetchPublicFallback({ repo, fetchImpl, timeoutMs });
   }
   if (!tagsRes.ok) {
-    throw classifyHttpError(tagsRes.status, '读取标签列表');
+    throw classifyHttpError(tagsRes.status, 'Fetch tags list');
   }
   const tags = await tagsRes.json();
   if (!Array.isArray(tags)) {
-    throw new Error('GitHub 标签响应格式异常');
+    throw new Error('Unexpected GitHub tags response format');
   }
   return pickHighestStableTag(repo, tags);
 };
@@ -335,13 +335,13 @@ const assertAllowedDownloadUrl = (rawUrl, allowedHosts) => {
   try {
     parsed = new URL(rawUrl);
   } catch {
-    throw new Error('下载地址格式非法');
+    throw new Error('Invalid download URL');
   }
   if (parsed.protocol !== 'https:') {
-    throw new Error(`拒绝使用非 HTTPS 下载地址：${parsed.protocol}`);
+    throw new Error(`Refusing non-HTTPS download URL: ${parsed.protocol}`);
   }
   if (!allowedHosts.includes(parsed.hostname)) {
-    throw new Error(`拒绝从非白名单主机下载：${parsed.hostname}`);
+    throw new Error(`Refusing download from non-allowlisted host: ${parsed.hostname}`);
   }
 };
 
@@ -363,7 +363,7 @@ export const downloadTarball = async (url, destPath, options = {}) => {
     headers: { 'User-Agent': 'antigravity-rail-updater' },
   });
   if (!res.ok) {
-    throw classifyHttpError(res.status, '下载更新包');
+    throw classifyHttpError(res.status, 'Download update package');
   }
   if (res.url) {
     assertAllowedDownloadUrl(res.url, allowedHosts);
@@ -372,12 +372,12 @@ export const downloadTarball = async (url, destPath, options = {}) => {
   const contentLength = Number(res.headers.get('content-length') || 0);
   const totalBytes = Number.isFinite(contentLength) && contentLength > 0 ? contentLength : 0;
   if (totalBytes > maxBytes) {
-    throw new Error(`更新包体积超出安全上限（${Math.round(maxBytes / 1024 / 1024)} MB）`);
+    throw new Error(`Update package exceeds safety size limit (${Math.round(maxBytes / 1024 / 1024)} MB)`);
   }
 
   const reader = res.body?.getReader();
   if (!reader) {
-    throw new Error('下载响应缺少可读数据流');
+    throw new Error('Download response is missing a readable stream');
   }
 
   const chunks = [];
@@ -388,7 +388,7 @@ export const downloadTarball = async (url, destPath, options = {}) => {
     downloadedBytes += value.byteLength;
     if (downloadedBytes > maxBytes) {
       await reader.cancel().catch(() => {});
-      throw new Error(`更新包体积超出安全上限（${Math.round(maxBytes / 1024 / 1024)} MB）`);
+      throw new Error(`Update package exceeds safety size limit (${Math.round(maxBytes / 1024 / 1024)} MB)`);
     }
     chunks.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
     const percent =
@@ -409,11 +409,11 @@ const assertNoSymlinkEscape = (baseDir, entryPath) => {
     resolvedEntry !== resolvedBase &&
     !resolvedEntry.startsWith(`${resolvedBase}${path.sep}`)
   ) {
-    throw new Error(`更新包包含越界路径：${entryPath}`);
+    throw new Error(`Update package contains an out-of-bounds path: ${entryPath}`);
   }
   const stat = fs.lstatSync(resolvedEntry);
   if (stat.isSymbolicLink()) {
-    throw new Error(`更新包包含不允许的符号链接：${path.relative(resolvedBase, resolvedEntry)}`);
+    throw new Error(`Update package contains a disallowed symlink: ${path.relative(resolvedBase, resolvedEntry)}`);
   }
   if (stat.isDirectory()) {
     for (const child of fs.readdirSync(resolvedEntry)) {
@@ -429,7 +429,7 @@ const defaultRunTar = async (tarballPath, extractDir) => {
       windowsHide: true,
     });
   } catch (err) {
-    throw new Error(`解压更新包失败：${err?.stderr?.trim() || err?.message || 'tar 执行异常'}`);
+    throw new Error(`Failed to extract update package: ${err?.stderr?.trim() || err?.message || 'tar failed'}`);
   }
 };
 
@@ -449,7 +449,7 @@ export const extractAndVerifyTarball = async (
 ) => {
   const expected = parseSemver(expectedVersion);
   if (!expected) {
-    throw new Error(`目标版本号无效："${expectedVersion}"`);
+    throw new Error(`Invalid target version: "${expectedVersion}"`);
   }
 
   fs.mkdirSync(extractDir, { recursive: true });
@@ -462,7 +462,7 @@ export const extractAndVerifyTarball = async (
       .readdirSync(extractDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory());
     if (dirs.length !== 1) {
-      throw new Error('更新包目录结构异常：未找到唯一的顶层插件目录');
+      throw new Error('Invalid update archive layout: expected a single top-level plugin directory');
     }
     sourceRoot = path.join(extractDir, dirs[0].name);
   }
@@ -470,7 +470,7 @@ export const extractAndVerifyTarball = async (
   for (const entry of RUNTIME_ENTRIES) {
     const candidate = path.join(sourceRoot, entry);
     if (!fs.existsSync(candidate)) {
-      throw new Error(`更新包缺少必需目录或文件：${entry}`);
+      throw new Error(`Update package is missing required entry: ${entry}`);
     }
     assertNoSymlinkEscape(sourceRoot, candidate);
   }
@@ -478,14 +478,14 @@ export const extractAndVerifyTarball = async (
   for (const relPath of REQUIRED_FILES) {
     const fullPath = path.join(sourceRoot, relPath);
     if (!fs.existsSync(fullPath) || !fs.lstatSync(fullPath).isFile()) {
-      throw new Error(`更新包缺少必需文件：${relPath}`);
+      throw new Error(`Update package is missing required file: ${relPath}`);
     }
   }
 
   const manifest = readInstalledManifest(sourceRoot);
   if (manifest.version !== expected.normalized) {
     throw new Error(
-      `更新包版本不匹配：期望 v${expected.normalized}，实际 v${manifest.version}`,
+      `Update package version mismatch: expected v${expected.normalized}, got v${manifest.version}`,
     );
   }
 
@@ -576,10 +576,10 @@ export const swapRuntimeEntries = async (sourceRoot, targetDir, backupDir, optio
       }
     } catch (rollbackErr) {
       throw new Error(
-        `安装失败（${installErr.message}），回滚亦失败（${rollbackErr.message}）`,
+        `Install failed (${installErr.message}), and rollback also failed (${rollbackErr.message})`,
       );
     }
-    throw new Error(`安装失败并已回滚至原版本：${installErr.message}`);
+    throw new Error(`Install failed and rolled back to previous version: ${installErr.message}`);
   }
 };
 
@@ -641,16 +641,16 @@ export class PluginUpdater {
    */
   request(body) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
-      return { ok: false, status: 400, error: '请求体必须是 JSON 对象' };
+      return { ok: false, status: 400, error: 'Request body must be a JSON object' };
     }
     for (const key of Object.keys(body)) {
       if (!ALLOWED_BODY_KEYS.has(key)) {
-        return { ok: false, status: 400, error: `不支持的请求字段："${key}"` };
+        return { ok: false, status: 400, error: `Unsupported request field: "${key}"` };
       }
     }
     const action = body.action;
     if (typeof action !== 'string' || !VALID_ACTIONS.has(action)) {
-      return { ok: false, status: 400, error: `不支持的更新操作："${String(action ?? '')}"` };
+      return { ok: false, status: 400, error: `Unsupported update action: "${String(action ?? '')}"` };
     }
 
     if (action === 'status') {
@@ -696,7 +696,7 @@ export class PluginUpdater {
       status: 'checking',
       phase: 'check',
       download: null,
-      message: '正在检查 GitHub 最新版本…',
+      message: 'Checking GitHub for the latest release…',
       error: null,
     };
 
@@ -727,7 +727,7 @@ export class PluginUpdater {
           releaseNotes: latest.releaseNotes,
           source: latest.source,
           download: null,
-          message: `当前已是最新版本（v${manifest.version}）`,
+          message: `You are up to date (v${manifest.version})`,
           error: null,
         };
         return;
@@ -746,7 +746,7 @@ export class PluginUpdater {
         releaseNotes: latest.releaseNotes,
         source: latest.source,
         download: null,
-        message: `发现新版本 v${latest.version}（当前 v${manifest.version}）`,
+        message: `New version v${latest.version} available (current v${manifest.version})`,
         error: null,
       };
     } catch (err) {
@@ -756,8 +756,8 @@ export class PluginUpdater {
         status: 'error',
         phase: 'check',
         download: null,
-        message: '检查更新失败',
-        error: err?.message ?? '未知错误',
+        message: 'Failed to check for updates',
+        error: err?.message ?? 'Unknown error',
       };
     }
   }
@@ -767,18 +767,18 @@ export class PluginUpdater {
       return { ok: true, state: this.#snapshot() };
     }
     if (this.state.status !== 'available' || !this.plan) {
-      return { ok: false, status: 400, error: '当前没有可安装的更新，请先点击检查更新' };
+      return { ok: false, status: 400, error: 'No update ready to install. Check for updates first.' };
     }
     if (this.now() - this.plan.createdAt > this.planTtlMs) {
       this.plan = null;
       this.state = { ...this.state, status: 'idle', phase: '', message: '' };
-      return { ok: false, status: 400, error: '更新检查结果已过期，请重新检查更新' };
+      return { ok: false, status: 400, error: 'Update check expired. Please check for updates again.' };
     }
     if (
       requestedVersion !== undefined &&
       parseSemver(requestedVersion)?.normalized !== this.plan.version
     ) {
-      return { ok: false, status: 400, error: '请求的目标版本与最新检查结果不一致' };
+      return { ok: false, status: 400, error: 'Requested version does not match the latest update check.' };
     }
 
     const plan = this.plan;
@@ -787,7 +787,7 @@ export class PluginUpdater {
       status: 'installing',
       phase: 'download',
       download: { downloadedBytes: 0, totalBytes: 0, percent: null },
-      message: `正在下载 v${plan.version}…`,
+      message: `Downloading v${plan.version}…`,
       error: null,
     };
 
@@ -813,7 +813,7 @@ export class PluginUpdater {
       });
 
       this.state.phase = 'verify';
-      this.state.message = `正在校验 v${plan.version} 更新包…`;
+      this.state.message = `Verifying v${plan.version} package…`;
       const { sourceRoot } = await extractAndVerifyTarball(
         tarballPath,
         extractDir,
@@ -825,9 +825,9 @@ export class PluginUpdater {
         syncRules: this.syncRules,
         onPhase: (phase) => {
           this.state.phase = phase;
-          if (phase === 'backup') this.state.message = '正在备份当前版本…';
-          if (phase === 'install') this.state.message = `正在替换插件文件并同步规则…`;
-          if (phase === 'recover') this.state.message = '安装异常，正在自动回滚…';
+          if (phase === 'backup') this.state.message = 'Backing up current version…';
+          if (phase === 'install') this.state.message = 'Installing files and syncing rules…';
+          if (phase === 'recover') this.state.message = 'Install failed, rolling back…';
         },
       });
 
@@ -839,7 +839,7 @@ export class PluginUpdater {
         currentVersion: plan.version,
         latestVersion: plan.version,
         download: null,
-        message: `已更新至 v${plan.version}`,
+        message: `Updated to v${plan.version}`,
         error: null,
       };
     } catch (err) {
@@ -847,8 +847,8 @@ export class PluginUpdater {
         ...this.state,
         status: 'error',
         download: null,
-        message: '更新安装失败',
-        error: err?.message ?? '未知错误',
+        message: 'Failed to install update',
+        error: err?.message ?? 'Unknown error',
       };
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -860,13 +860,13 @@ export class PluginUpdater {
       return { ok: true, state: this.#snapshot() };
     }
     if (this.state.status !== 'installed') {
-      return { ok: false, status: 400, error: '尚未完成新版本安装，无需重新加载' };
+      return { ok: false, status: 400, error: 'No installed update waiting for reload' };
     }
     this.state = {
       ...this.state,
       status: 'reloading',
       phase: 'complete',
-      message: '正在重启面板服务并加载新版本…',
+      message: 'Restarting sidecar panel to load the new version…',
       error: null,
     };
     setTimeout(() => {

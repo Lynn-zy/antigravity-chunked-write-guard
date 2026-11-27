@@ -153,7 +153,7 @@ test('fetchLatestReleaseInfo prefers Releases and falls back to highest stable T
   assert.match(fromPublicAtom.tarballUrl, /^https:\/\/github\.com\/.*\/archive\/refs\/tags\/v3\.3\.5\.tar\.gz$/);
 
   const allFailedFetch = async () => createMockJsonResponse(403, { message: 'rate limit' });
-  await assert.rejects(() => fetchLatestReleaseInfo({ fetchImpl: allFailedFetch }), /请求频率受限/);
+  await assert.rejects(() => fetchLatestReleaseInfo({ fetchImpl: allFailedFetch }), /rate limit exceeded/);
 });
 
 test('downloadTarball rejects disallowed hosts and enforces size limit', async () => {
@@ -161,11 +161,11 @@ test('downloadTarball rejects disallowed hosts and enforces size limit', async (
   try {
     await assert.rejects(
       () => downloadTarball('https://evil.example.com/pkg.tar.gz', path.join(tempDir, 'a.tgz')),
-      /非白名单主机/,
+      /non-allowlisted host/,
     );
     await assert.rejects(
       () => downloadTarball('http://github.com/pkg.tar.gz', path.join(tempDir, 'b.tgz')),
-      /非 HTTPS/,
+      /non-HTTPS/,
     );
 
     const bigBuf = Buffer.alloc(1024, 0x61);
@@ -175,7 +175,7 @@ test('downloadTarball rejects disallowed hosts and enforces size limit', async (
           maxBytes: 512,
           fetchImpl: async () => createMockStreamResponse(bigBuf),
         }),
-      /超出安全上限/,
+      /safety size limit/,
     );
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -287,8 +287,8 @@ test('PluginUpdater end-to-end check, install, config preservation, and reload f
     assert.equal(preserved.toolLocale.enabled, false);
     assert.equal(readTriggerStats({ eventsPath }).writeOversizeCount, 1);
     const syncedRules = fs.readFileSync(rulesPath, 'utf8');
-    assert.match(syncedRules, /300 行 · 稳妥档/);
-    assert.doesNotMatch(syncedRules, /## 工具状态与摘要保持中文/);
+    assert.match(syncedRules, /300 lines · Conservative/);
+    assert.doesNotMatch(syncedRules, /## Match User's Language for Tool Summaries/);
 
     // 触发重载回调
     const reloading = updater.request({ action: 'reload' });
@@ -307,7 +307,7 @@ test('extractAndVerifyTarball rejects version mismatch and swapRuntimeEntries ro
     const tarballPath = packTarballFixture(tempDir, 'pkg-1.2.5', '1.2.5');
     await assert.rejects(
       () => extractAndVerifyTarball(tarballPath, path.join(tempDir, 'bad-extract'), '1.3.0'),
-      /版本不匹配/,
+      /version mismatch/,
     );
 
     const installedDir = path.join(tempDir, 'installed');
@@ -324,10 +324,10 @@ test('extractAndVerifyTarball rejects version mismatch and swapRuntimeEntries ro
         swapRuntimeEntries(newSourceDir, installedDir, backupDir, {
           onPhase: (phase) => phases.push(phase),
           syncRules: async () => {
-            throw new Error('模拟规则同步失败');
+            throw new Error('simulated rule sync error');
           },
         }),
-      /已回滚至原版本/,
+      /rolled back to previous version/,
     );
 
     assert.deepEqual(phases, ['backup', 'install', 'recover']);
@@ -374,10 +374,10 @@ test('swapRuntimeEntries succeeds and rolls back even when sidecars/panel direct
       () =>
         swapRuntimeEntries(newSourceDir, installedDir, backupDir, {
           syncRules: async () => {
-            throw new Error('模拟故障');
+            throw new Error('simulated fault');
           },
         }),
-      /已回滚至原版本/,
+      /rolled back to previous version/,
     );
     assert.equal(fs.existsSync(path.join(panelDir, 'main.mjs')), true);
     assert.equal(fs.existsSync(path.join(panelDir, 'obsolete.txt')), true);

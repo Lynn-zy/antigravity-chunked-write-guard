@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -954,45 +954,46 @@
     <div class="header">
       <div class="title-group">
         <span class="title">Antigravity Rail</span>
-        <button id="versionTag" type="button" class="version-tag" title="查看变更日志">v—</button>
-        <button id="checkUpdateBtn" type="button" class="ghost-btn">检查更新</button>
+        <button id="versionTag" type="button" class="version-tag" data-i18n-title="versionTooltip" title="View changelog">v—</button>
+        <button id="checkUpdateBtn" type="button" class="ghost-btn" data-i18n="checkUpdate">Check Updates</button>
+        <button id="langToggleBtn" type="button" class="ghost-btn" data-i18n="langSwitch" data-i18n-title="langSwitchTooltip" title="Switch language">中文</button>
       </div>
-      <span id="activeBadge" class="badge">加载中…</span>
+      <span id="activeBadge" class="badge" data-i18n="loading">Loading…</span>
     </div>
-    <p class="subtitle">统一管理分段写入、响应汇报与工具摘要中文化。关闭模块会从常驻规则移除对应章节，Hook 调整实时生效。</p>
+    <p class="subtitle" data-i18n="subtitle">Manage chunked writes, responsive replies, and user-language tool summaries in one place. Disabling a module removes its section from AGENTS.md; Hook toggles apply immediately.</p>
 
-    <div class="cache-hint" role="note">
-      <strong>缓存提示：</strong>切换模块开关或档位会重写 <code>AGENTS.md</code>，对话中途调整会导致下一轮前缀缓存失效重算，建议在开始新对话前选好配置。
+    <div class="cache-hint" role="note" data-i18n-html="cacheHint">
+      <strong>Cache note:</strong> Toggling modules or presets rewrites <code>AGENTS.md</code>, which invalidates the prompt prefix cache mid-conversation. Pick your settings before starting a new chat.
     </div>
 
-    <div class="tabs" role="tablist" aria-label="护栏模块">
+    <div class="tabs" role="tablist" data-i18n-aria="tabsAria" aria-label="Guardrail modules">
       <button id="tabWriteGuard" type="button" role="tab" aria-selected="true" aria-controls="panelWriteGuard" class="tab-btn" data-tab="writeGuard">
-        <span id="dotWriteGuard" class="tab-dot on"></span>分段写入
+        <span id="dotWriteGuard" class="tab-dot on"></span><span data-i18n="tabWriteGuard">Write Guard</span>
       </button>
       <button id="tabResponsive" type="button" role="tab" aria-selected="false" aria-controls="panelResponsive" class="tab-btn" data-tab="responsive">
-        <span id="dotResponsive" class="tab-dot on"></span>响应汇报
+        <span id="dotResponsive" class="tab-dot on"></span><span data-i18n="tabResponsive">Responsive</span>
       </button>
       <button id="tabToolLocale" type="button" role="tab" aria-selected="false" aria-controls="panelToolLocale" class="tab-btn" data-tab="toolLocale">
-        <span id="dotToolLocale" class="tab-dot on"></span>摘要中文
+        <span id="dotToolLocale" class="tab-dot on"></span><span data-i18n="tabToolLocale">Tool Locale</span>
       </button>
     </div>
 
     <section id="panelWriteGuard" class="tab-panel" role="tabpanel" aria-labelledby="tabWriteGuard">
       <div class="toggle-card master">
         <div class="toggle-info">
-          <div class="toggle-title">启用分段写入规范</div>
-          <p id="writeMasterDesc" class="toggle-desc">开启后注入分段写入常驻规则并启用超限检测</p>
+          <div class="toggle-title" data-i18n="writeMasterTitle">Enable Chunked Write Guard</div>
+          <p id="writeMasterDesc" class="toggle-desc"></p>
         </div>
-        <button id="writeEnabledToggle" type="button" role="switch" aria-checked="true" aria-label="启用分段写入模块" class="switch-btn"></button>
+        <button id="writeEnabledToggle" type="button" role="switch" aria-checked="true" data-i18n-aria="writeMasterAria" aria-label="Toggle Chunked Write Guard" class="switch-btn"></button>
       </div>
       <div id="writeModuleBody" class="module-body">
-        <div id="writePresetList" class="preset-list" role="group" aria-label="写入阈值档位"></div>
+        <div id="writePresetList" class="preset-list" role="group" data-i18n-aria="writePresetAria" aria-label="Write threshold presets"></div>
         <div class="toggle-card">
           <div class="toggle-info">
-            <div class="toggle-title">超限事后提醒 Hook</div>
-            <p id="writeHookDesc" class="toggle-desc">超限写入落盘后，下一轮提醒模型按当前档位分段写入</p>
+            <div class="toggle-title" data-i18n="writeHookTitle">Post-Write Oversize Reminder Hook</div>
+            <p id="writeHookDesc" class="toggle-desc"></p>
           </div>
-          <button id="writeHookToggle" type="button" role="switch" aria-checked="true" aria-label="超限事后提醒 Hook 开关" class="switch-btn"></button>
+          <button id="writeHookToggle" type="button" role="switch" aria-checked="true" data-i18n-aria="writeHookAria" aria-label="Toggle post-write reminder Hook" class="switch-btn"></button>
         </div>
       </div>
     </section>
@@ -1000,19 +1001,19 @@
     <section id="panelResponsive" class="tab-panel" role="tabpanel" aria-labelledby="tabResponsive" hidden>
       <div class="toggle-card master">
         <div class="toggle-info">
-          <div class="toggle-title">启用先回话与途中汇报规范</div>
-          <p id="respMasterDesc" class="toggle-desc">要求模型收到消息先回应一两句，长任务中途按阶段说明发现与下一步</p>
+          <div class="toggle-title" data-i18n="respMasterTitle">Enable Reply-First & Progress Updates</div>
+          <p id="respMasterDesc" class="toggle-desc"></p>
         </div>
-        <button id="respEnabledToggle" type="button" role="switch" aria-checked="true" aria-label="启用响应汇报模块" class="switch-btn"></button>
+        <button id="respEnabledToggle" type="button" role="switch" aria-checked="true" data-i18n-aria="respMasterAria" aria-label="Toggle Responsive Mode" class="switch-btn"></button>
       </div>
       <div id="respModuleBody" class="module-body">
-        <div id="respPresetList" class="preset-list" role="group" aria-label="中途静默阈值档位"></div>
+        <div id="respPresetList" class="preset-list" role="group" data-i18n-aria="respPresetAria" aria-label="Silent tool-call streak thresholds"></div>
         <div class="toggle-card">
           <div class="toggle-info">
-            <div class="toggle-title">犯规后轮间纠偏 Hook</div>
-            <p id="respHookDesc" class="toggle-desc">上一轮开场空正文直接调工具或中途连续静默达标时，下一条用户消息注入提醒</p>
+            <div class="toggle-title" data-i18n="respHookTitle">Next-Turn Correction Hook</div>
+            <p id="respHookDesc" class="toggle-desc"></p>
           </div>
-          <button id="respHookToggle" type="button" role="switch" aria-checked="true" aria-label="响应汇报 Hook 开关" class="switch-btn"></button>
+          <button id="respHookToggle" type="button" role="switch" aria-checked="true" data-i18n-aria="respHookAria" aria-label="Toggle Responsive Mode Hook" class="switch-btn"></button>
         </div>
       </div>
     </section>
@@ -1020,25 +1021,25 @@
     <section id="panelToolLocale" class="tab-panel" role="tabpanel" aria-labelledby="tabToolLocale" hidden>
       <div class="toggle-card master">
         <div class="toggle-info">
-          <div class="toggle-title">启用工具摘要中文规范</div>
-          <p id="localeMasterDesc" class="toggle-desc">无需改二进制，通过常驻规则让界面可见的工具状态和摘要保持中文短语</p>
+          <div class="toggle-title" data-i18n="localeMasterTitle">Match User's Language for Tool Summaries</div>
+          <p id="localeMasterDesc" class="toggle-desc"></p>
         </div>
-        <button id="localeEnabledToggle" type="button" role="switch" aria-checked="true" aria-label="启用工具摘要中文模块" class="switch-btn"></button>
+        <button id="localeEnabledToggle" type="button" role="switch" aria-checked="true" data-i18n-aria="localeMasterAria" aria-label="Toggle Tool Locale module" class="switch-btn"></button>
       </div>
       <div id="localeModuleBody" class="module-body">
         <div class="info-card">
-          <div class="info-card-title">覆盖字段与放行规则</div>
-          <ul>
-            <li>检查 <code>update_steps</code> 步骤标题（<code>title</code>）、<code>update_focus</code> 状态（<code>focus</code>）与 <code>run_command</code> 摘要（<code>toolSummary</code>）。</li>
-            <li>仅在出现纯英文短语时判定犯规，像「检查 Git 状态」「运行 npm test」这类中英混排技术短语正常放行。</li>
+          <div class="info-card-title" data-i18n="localeInfoTitle">Covered Fields & Detection Scope</div>
+          <ul data-i18n-html="localeInfoList">
+            <li>Covers <code>update_steps</code> titles (<code>title</code>), <code>update_focus</code> status (<code>focus</code>), and <code>run_command</code> summaries (<code>toolSummary</code>).</li>
+            <li>Always-on rules apply to all languages. The Hook auto-detects non-Latin scripts (CJK, Cyrillic, Arabic, Thai, Devanagari, Hebrew, Greek) with recent-turn lookback, stays silent for Latin-script chats, and allows inline technical terms like <code>npm test</code>.</li>
           </ul>
         </div>
         <div class="toggle-card">
           <div class="toggle-info">
-            <div class="toggle-title">同轮立即纠偏 Hook</div>
-            <p id="localeHookDesc" class="toggle-desc">检测到纯英文摘要后，在同轮下一次模型调用前立即提醒一次，不阻断命令执行</p>
+            <div class="toggle-title" data-i18n="localeHookTitle">Same-Turn Correction Hook</div>
+            <p id="localeHookDesc" class="toggle-desc"></p>
           </div>
-          <button id="localeHookToggle" type="button" role="switch" aria-checked="true" aria-label="摘要中文同轮 Hook 开关" class="switch-btn"></button>
+          <button id="localeHookToggle" type="button" role="switch" aria-checked="true" data-i18n-aria="localeHookAria" aria-label="Toggle Tool Locale Hook" class="switch-btn"></button>
         </div>
       </div>
     </section>
@@ -1046,30 +1047,30 @@
     <div class="status-bar">
       <div class="stats-row">
         <div class="stats-counters">
-          <span class="stat-item">超限落盘 <strong id="writeOversizeCount" class="stat-num">0</strong></span>
-          <span class="stat-item">写入提醒 <strong id="writeReminderCount" class="stat-num">0</strong></span>
-          <span class="stat-item">响应纠偏 <strong id="responsiveReminderCount" class="stat-num">0</strong></span>
-          <span class="stat-item">摘要纠偏 <strong id="toolLocaleReminderCount" class="stat-num">0</strong></span>
+          <span class="stat-item"><span data-i18n="statWriteOversize">Oversize</span> <strong id="writeOversizeCount" class="stat-num">0</strong></span>
+          <span class="stat-item"><span data-i18n="statWriteReminder">Write Hints</span> <strong id="writeReminderCount" class="stat-num">0</strong></span>
+          <span class="stat-item"><span data-i18n="statRespReminder">Reply Hints</span> <strong id="responsiveReminderCount" class="stat-num">0</strong></span>
+          <span class="stat-item"><span data-i18n="statLocaleReminder">Locale Hints</span> <strong id="toolLocaleReminderCount" class="stat-num">0</strong></span>
         </div>
-        <button id="resetStatsBtn" type="button" class="reset-btn" disabled>清零</button>
+        <button id="resetStatsBtn" type="button" class="reset-btn" data-i18n="resetStats" disabled>Reset</button>
       </div>
       <div class="status-row">
         <span id="statusDot" class="status-dot"></span>
-        <span id="statusMsg" class="status-msg">正在读取当前配置…</span>
+        <span id="statusMsg" class="status-msg" data-i18n="loadingSettings">Loading settings…</span>
       </div>
     </div>
   </main>
 
   <dialog id="updateDialog" class="update-dialog" aria-labelledby="updateDialogTitle">
     <div class="dialog-head">
-      <span id="updateDialogTitle" class="dialog-title">插件更新</span>
-      <button id="updateCloseIcon" type="button" class="dialog-close" aria-label="关闭">×</button>
+      <span id="updateDialogTitle" class="dialog-title" data-i18n="updateDialogTitle">Plugin Update</span>
+      <button id="updateCloseIcon" type="button" class="dialog-close" data-i18n-aria="close" aria-label="Close">×</button>
     </div>
     <div class="dialog-body">
       <div class="update-hero">
         <span id="updateIcon" class="update-icon"></span>
         <div>
-          <div id="updateSummary" class="update-summary">准备检查更新…</div>
+          <div id="updateSummary" class="update-summary" data-i18n="updatePreparing">Preparing update check…</div>
           <div id="updateDetail" class="update-detail"></div>
         </div>
       </div>
@@ -1086,9 +1087,9 @@
       <div id="updateNotes" class="md-notes"></div>
     </div>
     <div class="dialog-foot">
-      <span id="updateHint" class="dialog-hint">保留本地档位与统计日志</span>
+      <span id="updateHint" class="dialog-hint" data-i18n="updateHint">Preserves local settings & stats</span>
       <div class="dialog-actions">
-        <button id="updateCancelBtn" type="button" class="dialog-btn">关闭</button>
+        <button id="updateCancelBtn" type="button" class="dialog-btn" data-i18n="close">Close</button>
         <button id="updateActionBtn" type="button" class="dialog-btn primary" hidden></button>
       </div>
     </div>
@@ -1096,8 +1097,8 @@
 
   <dialog id="changelogDialog" class="update-dialog" aria-labelledby="changelogDialogTitle">
     <div class="dialog-head">
-      <span id="changelogDialogTitle" class="dialog-title">变更日志</span>
-      <button id="changelogCloseIcon" type="button" class="dialog-close" aria-label="关闭">×</button>
+      <span id="changelogDialogTitle" class="dialog-title" data-i18n="changelogDialogTitle">Changelog</span>
+      <button id="changelogCloseIcon" type="button" class="dialog-close" data-i18n-aria="close" aria-label="Close">×</button>
     </div>
     <div class="dialog-body">
       <div id="changelogContent" class="md-notes changelog-body"></div>
@@ -1105,16 +1106,339 @@
     <div class="dialog-foot">
       <span id="changelogVersionHint" class="dialog-hint"></span>
       <div class="dialog-actions">
-        <button id="changelogCloseBtn" type="button" class="dialog-btn">关闭</button>
+        <button id="changelogCloseBtn" type="button" class="dialog-btn" data-i18n="close">Close</button>
       </div>
     </div>
   </dialog>
 
   <script>
     (() => {
+      const LANG_STORAGE_KEY = 'antigravity-rail-ui-lang';
+      const detectInitialLang = () => {
+        try {
+          const saved = window.localStorage.getItem(LANG_STORAGE_KEY);
+          if (saved === 'zh' || saved === 'en') return saved;
+        } catch {
+          // 忽略禁用存储环境下的异常
+        }
+        const navLang = (navigator.language || '').toLowerCase();
+        return navLang.startsWith('zh') ? 'zh' : 'en';
+      };
+
+      const I18N = {
+        zh: {
+          htmlLang: 'zh-CN',
+          locale: 'zh-CN',
+          versionTooltip: '查看变更日志',
+          checkUpdate: '检查更新',
+          langSwitch: 'EN',
+          langSwitchTooltip: 'Switch to English',
+          loading: '加载中…',
+          subtitle: '统一管理分段写入、响应汇报与工具摘要语言匹配。关闭模块会从常驻规则移除对应章节，Hook 调整实时生效。',
+          cacheHint: '<strong>缓存提示：</strong>切换模块开关或档位会重写 <code>AGENTS.md</code>，对话中途调整会导致下一轮前缀缓存失效重算，建议在开始新对话前选好配置。',
+          tabsAria: '护栏模块',
+          tabWriteGuard: '分段写入',
+          tabResponsive: '响应汇报',
+          tabToolLocale: '摘要语言',
+          writeMasterTitle: '启用分段写入规范',
+          writeMasterAria: '启用分段写入模块',
+          writePresetAria: '写入阈值档位',
+          writeHookTitle: '超限事后提醒 Hook',
+          writeHookAria: '超限事后提醒 Hook 开关',
+          respMasterTitle: '启用先回话与途中汇报规范',
+          respMasterAria: '启用响应汇报模块',
+          respPresetAria: '中途静默阈值档位',
+          respHookTitle: '犯规后轮间纠偏 Hook',
+          respHookAria: '响应汇报 Hook 开关',
+          localeMasterTitle: '启用工具摘要语言匹配规范',
+          localeMasterAria: '启用工具摘要语言模块',
+          localeInfoTitle: '覆盖字段与检测边界',
+          localeInfoList:
+            '<li>覆盖 <code>update_steps</code> 步骤标题（<code>title</code>）、<code>update_focus</code> 状态（<code>focus</code>）与 <code>run_command</code> 摘要（<code>toolSummary</code>）。</li>' +
+            '<li>常驻规则支持所有语种；Hook 自动识别非拉丁文字脚本（中/日/韩/西里尔/阿拉伯/泰文/天城文/希伯来/希腊文）并支持短回复回溯，英文与拉丁语系静默放行，允许混排 <code>npm test</code> 等技术标识。</li>',
+          localeHookTitle: '同轮立即纠偏 Hook',
+          localeHookAria: '摘要语言同轮 Hook 开关',
+          statWriteOversize: '超限落盘',
+          statWriteReminder: '写入提醒',
+          statRespReminder: '响应纠偏',
+          statLocaleReminder: '摘要纠偏',
+          resetStats: '清零',
+          loadingSettings: '正在读取当前配置…',
+          updateDialogTitle: '插件更新',
+          updatePreparing: '准备检查更新…',
+          updateHint: '保留本地档位与统计日志',
+          changelogDialogTitle: '变更日志',
+          close: '关闭',
+          activeBadge: (n) => `${n}/3 模块生效`,
+          pillActive: '● 生效中',
+          pillSwitch: '切换',
+          metricSoftTarget: '单次写入目标',
+          metricWarnWrite: '单次写入警戒线',
+          metricWarnEdit: 'edit_file 合计警戒线',
+          linesUnit: (n) => `${n} 行`,
+          writePresets: {
+            '300': { label: '300 行 · 稳妥档', summary: '网络波动大或上下文较长时使用，减小单次写入行数' },
+            '500': { label: '500 行 · 标准档', summary: '日常默认，常规源码文件可一次写完，超限时事后提醒' },
+            '700': { label: '700 行 · 宽松档', summary: '网络稳定且常写较长单文件时使用，放宽单次行数目标' },
+          },
+          respPresets: {
+            4: { label: '4 次 · 敏感档', summary: '中途连续 4 次无正文调用工具即判犯规，更快拉回可见性' },
+            6: { label: '6 次 · 标准档', summary: '日常默认，允许单阶段连续读查，达 6 次无正文调工具后下一轮纠偏' },
+            10: { label: '10 次 · 宽松档', summary: '适合深度排查或大型重构，减少中途静默触发纠偏' },
+          },
+          writeMasterOn: (label) => `已启用（${label}），常驻规则与检测已生效`,
+          writeMasterOff: '已关闭，已从 AGENTS.md 移除分段写入规则并停用检测',
+          writeHookOn: '超限写入落盘后，下一轮提醒模型按当前档位分段写入',
+          writeHookOff: '已关闭，仅记录超限统计，不向模型上下文注入提醒',
+          respMasterOn: (label) => `已启用（${label}），要求先回话并在长任务途中汇报`,
+          respMasterOff: '已关闭，已从 AGENTS.md 移除响应汇报规则并停用 Hook',
+          respHookOn: (n) => `上一轮开场空正文或中途连续 ${n} 次静默调工具时下一轮纠偏；同轮途中汇报把已知文件写成反引号时立即提醒改用链接`,
+          respHookOff: '已关闭，仅靠常驻规则约束，不向模型上下文注入纠偏提醒',
+          localeMasterOn: '已启用，要求步骤标题、聚焦状态和命令摘要始终匹配用户语言',
+          localeMasterOff: '已关闭，已从 AGENTS.md 移除摘要语言规则并停用 Hook',
+          localeHookOn: '在非拉丁语系会话中检测到纯英文摘要时，同轮下一次模型调用前立即提醒一次',
+          localeHookOff: '已关闭，仅靠常驻规则约束，不注入同轮纠偏提醒',
+          writePresetPending: (id) => `正在切换至 ${id} 行档…`,
+          writePresetDone: (label) => `分段写入已切换为 ${label}（AGENTS.md 已同步）`,
+          respPresetPending: (n) => `正在切换静默阈值为 ${n} 次…`,
+          respPresetDone: (label) => `响应汇报静默阈值已切换为 ${label}`,
+          toggles: {
+            writeEnabled: {
+              onPending: '正在启用分段写入模块…',
+              offPending: '正在关闭分段写入模块…',
+              onDone: '已启用分段写入模块（AGENTS.md 已同步）',
+              offDone: '已关闭分段写入模块（规则章节已移除）',
+            },
+            writeHook: {
+              onPending: '正在开启超限事后提醒 Hook…',
+              offPending: '正在关闭超限事后提醒 Hook…',
+              onDone: '已开启超限事后提醒 Hook',
+              offDone: '已关闭超限事后提醒 Hook（仅保留统计）',
+            },
+            respEnabled: {
+              onPending: '正在启用响应汇报模块…',
+              offPending: '正在关闭响应汇报模块…',
+              onDone: '已启用响应汇报模块（AGENTS.md 已同步）',
+              offDone: '已关闭响应汇报模块（规则章节已移除）',
+            },
+            respHook: {
+              onPending: '正在开启响应汇报 Hook…',
+              offPending: '正在关闭响应汇报 Hook…',
+              onDone: '已开启响应汇报轮间纠偏 Hook',
+              offDone: '已关闭响应汇报 Hook（仅保留常驻规则）',
+            },
+            localeEnabled: {
+              onPending: '正在启用摘要语言模块…',
+              offPending: '正在关闭摘要语言模块…',
+              onDone: '已启用摘要语言模块（AGENTS.md 已同步）',
+              offDone: '已关闭摘要语言模块（规则章节已移除）',
+            },
+            localeHook: {
+              onPending: '正在开启摘要语言同轮 Hook…',
+              offPending: '正在关闭摘要语言同轮 Hook…',
+              onDone: '已开启摘要语言同轮纠偏 Hook',
+              offDone: '已关闭摘要语言 Hook（仅保留常驻规则）',
+            },
+          },
+          noTriggerYet: '暂无触发记录',
+          lastTriggered: (time) => `最近触发：${time}`,
+          statsResetDone: '触发统计已清零',
+          updateSettingsFail: (msg) => `更新设置失败：${msg}`,
+          resetStatsFail: (msg) => `清零失败：${msg}`,
+          loadStateFail: (msg) => `读取状态失败：${msg}`,
+          updateSummary: {
+            checking: () => '正在检查 GitHub 最新版本…',
+            current: (st) => `当前已是最新版本（v${st.currentVersion || ''}）`,
+            available: (st) => `发现新版本 v${st.latestVersion || ''}（当前 v${st.currentVersion || ''}）`,
+            download: (st) => `正在下载 v${st.latestVersion || ''}…`,
+            verify: (st) => `正在校验 v${st.latestVersion || ''} 更新包…`,
+            backup: () => '正在备份当前版本…',
+            install: () => '正在替换插件文件并同步规则…',
+            recover: () => '安装异常，正在自动回滚…',
+            installed: (st) => `更新成功${st.currentVersion ? ` v${st.currentVersion}` : ''}`,
+            reloading: () => '正在重启面板服务并加载新版本…',
+            errorCheck: () => '检查更新失败',
+            errorInstall: () => '更新安装失败',
+            errorRequest: () => '更新请求失败',
+            errorReloadTimeout: () => '等待面板重启超时',
+            fallback: () => '准备检查更新…',
+          },
+          updateReloadCountdown: (sec) => `${sec} 秒后自动重新加载…`,
+          updateReloadTimeoutDetail: '请重新打开 Antigravity Rail 侧边栏面板以加载新版本。',
+          updateTagFallback: '当前仓库尚未发布 Release，已自动回退至最新稳定标签。',
+          updateUnknownError: '未知错误',
+          updateDownloaded: (mb) => `已下载 ${mb}`,
+          updateVersionPair: (cur, latest) => `当前 v${cur} → 最新 v${latest}`,
+          updateActionAvailable: '立即更新',
+          updateActionRetry: '重试',
+          changelogLoading: '正在读取变更日志…',
+          changelogVersion: (v) => `当前版本 v${v}`,
+          changelogEmpty: '暂无本地变更日志记录。',
+          changelogFail: (msg) => `读取变更日志失败：${msg}`,
+        },
+        en: {
+          htmlLang: 'en',
+          locale: 'en-US',
+          versionTooltip: 'View changelog',
+          checkUpdate: 'Updates',
+          langSwitch: '中文',
+          langSwitchTooltip: '切换为中文界面',
+          loading: 'Loading…',
+          subtitle: 'Manage chunked writes, responsive replies, and user-language tool summaries in one place. Disabling a module removes its AGENTS.md section; Hook toggles apply live.',
+          cacheHint: '<strong>Cache note:</strong> Toggling modules or presets rewrites <code>AGENTS.md</code>, which invalidates the prompt prefix cache mid-chat. Pick your settings before starting a new conversation.',
+          tabsAria: 'Guardrail modules',
+          tabWriteGuard: 'Write Guard',
+          tabResponsive: 'Responsive',
+          tabToolLocale: 'Tool Locale',
+          writeMasterTitle: 'Enable Chunked Write Guard',
+          writeMasterAria: 'Toggle Chunked Write Guard',
+          writePresetAria: 'Write threshold presets',
+          writeHookTitle: 'Post-Write Oversize Reminder Hook',
+          writeHookAria: 'Toggle post-write reminder Hook',
+          respMasterTitle: 'Enable Reply-First & Progress Updates',
+          respMasterAria: 'Toggle Responsive Mode',
+          respPresetAria: 'Silent tool-call streak thresholds',
+          respHookTitle: 'Next-Turn Correction Hook',
+          respHookAria: 'Toggle Responsive Mode Hook',
+          localeMasterTitle: "Match User's Language for Tool Summaries",
+          localeMasterAria: 'Toggle Tool Locale module',
+          localeInfoTitle: 'Covered Fields & Detection Scope',
+          localeInfoList:
+            '<li>Covers <code>update_steps</code> titles (<code>title</code>), <code>update_focus</code> status (<code>focus</code>), and <code>run_command</code> summaries (<code>toolSummary</code>).</li>' +
+            '<li>Always-on rules cover all languages. The Hook auto-detects non-Latin scripts (CJK, Cyrillic, Arabic, Thai, Devanagari, Hebrew, Greek) with recent-turn lookback, stays silent for Latin-script chats, and allows inline terms like <code>npm test</code>.</li>',
+          localeHookTitle: 'Same-Turn Correction Hook',
+          localeHookAria: 'Toggle Tool Locale Hook',
+          statWriteOversize: 'Oversize',
+          statWriteReminder: 'Write Hints',
+          statRespReminder: 'Reply Hints',
+          statLocaleReminder: 'Locale Hints',
+          resetStats: 'Reset',
+          loadingSettings: 'Loading settings…',
+          updateDialogTitle: 'Plugin Update',
+          updatePreparing: 'Preparing update check…',
+          updateHint: 'Preserves local settings & stats',
+          changelogDialogTitle: 'Changelog',
+          close: 'Close',
+          activeBadge: (n) => `${n}/3 Active`,
+          pillActive: '● Active',
+          pillSwitch: 'Use',
+          metricSoftTarget: 'Per-Write Target',
+          metricWarnWrite: 'Single-Write Limit',
+          metricWarnEdit: 'edit_file Combined Limit',
+          linesUnit: (n) => `${n} lines`,
+          writePresets: {
+            '300': { label: '300 lines · Conservative', summary: 'Smaller writes per step for unstable networks or long contexts' },
+            '500': { label: '500 lines · Standard', summary: 'Balanced default for typical source files with post-write reminders' },
+            '700': { label: '700 lines · Relaxed', summary: 'Higher per-write target for stable networks and longer single files' },
+          },
+          respPresets: {
+            4: { label: '4 calls · Sensitive', summary: 'Triggers after 4 consecutive silent tool calls to restore visibility faster' },
+            6: { label: '6 calls · Standard', summary: 'Balanced default allowing brief read/search bursts before reminding' },
+            10: { label: '10 calls · Relaxed', summary: 'Suited for deep investigations or large refactors with fewer interruptions' },
+          },
+          writeMasterOn: (label) => `Enabled (${label}). Rules and oversize detection are active`,
+          writeMasterOff: 'Disabled. Removed from AGENTS.md and paused oversize detection',
+          writeHookOn: 'Reminds the model on the next turn after an oversize write completes',
+          writeHookOff: 'Disabled. Counts oversize writes without injecting reminders',
+          respMasterOn: (label) => `Enabled (${label}). Enforces opening replies and progress updates`,
+          respMasterOff: 'Disabled. Removed from AGENTS.md and paused Responsive Hook',
+          respHookOn: (n) => `Next-turn reminder after a silent opener or ${n} silent calls; same-turn reminder if known files use plain backticks instead of links`,
+          respHookOff: 'Disabled. Enforced by AGENTS.md rules only without Hook injection',
+          localeMasterOn: "Enabled. Keeps step titles, focus status, and command summaries in the user's language",
+          localeMasterOff: 'Disabled. Removed from AGENTS.md and paused Tool Locale Hook',
+          localeHookOn: 'Injects one same-turn reminder when English-only summaries appear in a non-Latin chat',
+          localeHookOff: 'Disabled. Enforced by AGENTS.md rules only without same-turn injection',
+          writePresetPending: (id) => `Switching to ${id}-line preset…`,
+          writePresetDone: (label) => `Write Guard switched to ${label} (AGENTS.md synced)`,
+          respPresetPending: (n) => `Switching silent threshold to ${n} calls…`,
+          respPresetDone: (label) => `Responsive threshold switched to ${label}`,
+          toggles: {
+            writeEnabled: {
+              onPending: 'Enabling Write Guard…',
+              offPending: 'Disabling Write Guard…',
+              onDone: 'Write Guard enabled (AGENTS.md synced)',
+              offDone: 'Write Guard disabled (section removed)',
+            },
+            writeHook: {
+              onPending: 'Enabling post-write reminder Hook…',
+              offPending: 'Disabling post-write reminder Hook…',
+              onDone: 'Post-write reminder Hook enabled',
+              offDone: 'Post-write reminder Hook disabled (stats only)',
+            },
+            respEnabled: {
+              onPending: 'Enabling Responsive Mode…',
+              offPending: 'Disabling Responsive Mode…',
+              onDone: 'Responsive Mode enabled (AGENTS.md synced)',
+              offDone: 'Responsive Mode disabled (section removed)',
+            },
+            respHook: {
+              onPending: 'Enabling Responsive Hook…',
+              offPending: 'Disabling Responsive Hook…',
+              onDone: 'Responsive correction Hook enabled',
+              offDone: 'Responsive Hook disabled (rules only)',
+            },
+            localeEnabled: {
+              onPending: 'Enabling Tool Locale…',
+              offPending: 'Disabling Tool Locale…',
+              onDone: 'Tool Locale enabled (AGENTS.md synced)',
+              offDone: 'Tool Locale disabled (section removed)',
+            },
+            localeHook: {
+              onPending: 'Enabling Tool Locale Hook…',
+              offPending: 'Disabling Tool Locale Hook…',
+              onDone: 'Tool Locale same-turn Hook enabled',
+              offDone: 'Tool Locale Hook disabled (rules only)',
+            },
+          },
+          noTriggerYet: 'No triggers recorded yet',
+          lastTriggered: (time) => `Last triggered: ${time}`,
+          statsResetDone: 'Trigger stats cleared',
+          updateSettingsFail: (msg) => `Failed to update settings: ${msg}`,
+          resetStatsFail: (msg) => `Failed to reset stats: ${msg}`,
+          loadStateFail: (msg) => `Failed to load state: ${msg}`,
+          updateSummary: {
+            checking: () => 'Checking GitHub for the latest release…',
+            current: (st) => `You are up to date (v${st.currentVersion || ''})`,
+            available: (st) => `New version v${st.latestVersion || ''} available (current v${st.currentVersion || ''})`,
+            download: (st) => `Downloading v${st.latestVersion || ''}…`,
+            verify: (st) => `Verifying v${st.latestVersion || ''} package…`,
+            backup: () => 'Backing up current version…',
+            install: () => 'Installing files and syncing rules…',
+            recover: () => 'Install failed, rolling back…',
+            installed: (st) => `Updated${st.currentVersion ? ` to v${st.currentVersion}` : ''}`,
+            reloading: () => 'Restarting sidecar panel to load the new version…',
+            errorCheck: () => 'Failed to check for updates',
+            errorInstall: () => 'Failed to install update',
+            errorRequest: () => 'Update request failed',
+            errorReloadTimeout: () => 'Timed out waiting for sidecar restart',
+            fallback: () => 'Preparing update check…',
+          },
+          updateReloadCountdown: (sec) => `Reloading automatically in ${sec}s…`,
+          updateReloadTimeoutDetail: 'Please reopen the Antigravity Rail side pane to load the new version.',
+          updateTagFallback: 'No GitHub Release published yet; fell back to the latest stable tag.',
+          updateUnknownError: 'Unknown error',
+          updateDownloaded: (mb) => `Downloaded ${mb}`,
+          updateVersionPair: (cur, latest) => `Current v${cur} → Latest v${latest}`,
+          updateActionAvailable: 'Update Now',
+          updateActionRetry: 'Retry',
+          changelogLoading: 'Loading changelog…',
+          changelogVersion: (v) => `Current version v${v}`,
+          changelogEmpty: 'No local changelog entries found.',
+          changelogFail: (msg) => `Failed to load changelog: ${msg}`,
+        },
+      };
+
+      let currentLang = detectInitialLang();
+      const dict = () => I18N[currentLang];
+      const getWritePresetCopy = (preset) =>
+        dict().writePresets[preset.id] || { label: preset.label, summary: preset.summary };
+      const getRespPresetCopy = (preset) =>
+        dict().respPresets[preset.threshold] || { label: preset.label, summary: preset.summary };
+
       const versionTagEl = document.getElementById('versionTag');
       const badgeEl = document.getElementById('activeBadge');
       const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+      const langToggleBtn = document.getElementById('langToggleBtn');
       const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
       const tabPanels = {
         writeGuard: document.getElementById('panelWriteGuard'),
@@ -1160,6 +1484,7 @@
       let busy = false;
       let loading = false;
       let activeTab = 'writeGuard';
+      let lastPanelState = null;
       let currentSettings = {
         writeGuard: { enabled: true, presetId: '500', hookEnabled: true },
         responsive: { enabled: true, silentThreshold: 6, hookEnabled: true },
@@ -1173,6 +1498,25 @@
         lastTriggeredAt: null,
       };
       let statusKind = '';
+      let lastStatusFactory = () => dict().loadingSettings;
+
+      const STATIC_I18N_BINDINGS = [
+        ['[data-i18n]', 'i18n', (el, val) => { el.textContent = val; }],
+        ['[data-i18n-html]', 'i18nHtml', (el, val) => { el.innerHTML = val; }],
+        ['[data-i18n-aria]', 'i18nAria', (el, val) => el.setAttribute('aria-label', val)],
+        ['[data-i18n-title]', 'i18nTitle', (el, val) => el.setAttribute('title', val)],
+      ];
+
+      const applyStaticTranslations = () => {
+        const d = dict();
+        document.documentElement.lang = d.htmlLang;
+        for (const [selector, dataKey, apply] of STATIC_I18N_BINDINGS) {
+          for (const el of document.querySelectorAll(selector)) {
+            const val = d[el.dataset[dataKey]];
+            if (typeof val === 'string') apply(el, val);
+          }
+        }
+      };
 
       const apiFetch = (url, options = {}) => {
         if (window.sidecar && typeof window.sidecar.fetch === 'function') {
@@ -1233,17 +1577,21 @@
         resetStatsBtn.disabled = busy || totalStats === 0;
       };
 
-      const setStatus = (text, kind = '') => {
+      const setStatus = (textOrFactory, kind = '') => {
         statusKind = kind;
-        statusMsgEl.textContent = text;
+        lastStatusFactory = typeof textOrFactory === 'function' ? textOrFactory : () => textOrFactory;
+        statusMsgEl.textContent = lastStatusFactory();
         statusMsgEl.className = kind ? `status-msg ${kind}` : 'status-msg';
         statusDotEl.className = kind ? `status-dot ${kind}` : 'status-dot';
       };
 
       const formatTriggerTime = (iso) => {
-        if (!iso) return '暂无触发记录';
+        const d = dict();
+        if (!iso) return d.noTriggerYet;
         const date = new Date(iso);
-        return Number.isNaN(date.getTime()) ? `最近触发：${iso}` : `最近触发：${date.toLocaleString()}`;
+        return Number.isNaN(date.getTime())
+          ? d.lastTriggered(iso)
+          : d.lastTriggered(date.toLocaleString(d.locale));
       };
 
       const renderStats = (stats) => {
@@ -1262,7 +1610,9 @@
       };
 
       const render = (state) => {
+        lastPanelState = state;
         currentSettings = state.settings;
+        const d = dict();
         const { writeGuard, responsive, toolLocale } = currentSettings;
 
         if (typeof state.version === 'string' && state.version) {
@@ -1270,46 +1620,46 @@
         }
 
         const enabledCount = [writeGuard.enabled, responsive.enabled, toolLocale.enabled].filter(Boolean).length;
-        badgeEl.textContent = `${enabledCount}/3 模块生效`;
+        badgeEl.textContent = d.activeBadge(enabledCount);
 
         tabDots.writeGuard.className = writeGuard.enabled ? 'tab-dot on' : 'tab-dot';
         tabDots.responsive.className = responsive.enabled ? 'tab-dot on' : 'tab-dot';
         tabDots.toolLocale.className = toolLocale.enabled ? 'tab-dot on' : 'tab-dot';
 
+        const activeWriteCopy = getWritePresetCopy(state.activeWritePreset);
         writeEnabledToggle.setAttribute('aria-checked', String(writeGuard.enabled));
         writeMasterDescEl.textContent = writeGuard.enabled
-          ? `已启用（${state.activeWritePreset.label}），常驻规则与检测已生效`
-          : '已关闭，已从 AGENTS.md 移除分段写入规则并停用检测';
+          ? d.writeMasterOn(activeWriteCopy.label)
+          : d.writeMasterOff;
         writeHookToggle.setAttribute('aria-checked', String(writeGuard.hookEnabled));
-        writeHookDescEl.textContent = writeGuard.hookEnabled
-          ? '超限写入落盘后，下一轮提醒模型按当前档位分段写入'
-          : '已关闭，仅记录超限统计，不向模型上下文注入提醒';
+        writeHookDescEl.textContent = writeGuard.hookEnabled ? d.writeHookOn : d.writeHookOff;
 
         writePresetListEl.innerHTML = '';
         for (const preset of state.writePresets) {
           const isActive = preset.id === writeGuard.presetId;
+          const presetCopy = getWritePresetCopy(preset);
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'preset-card';
           btn.setAttribute('aria-pressed', String(isActive));
           btn.innerHTML = `
             <div class="card-top">
-              <span class="card-title">${preset.label}</span>
-              <span class="action-pill">${isActive ? '● 生效中' : '切换'}</span>
+              <span class="card-title">${presetCopy.label}</span>
+              <span class="action-pill">${isActive ? d.pillActive : d.pillSwitch}</span>
             </div>
-            <p class="card-desc">${preset.summary}</p>
+            <p class="card-desc">${presetCopy.summary}</p>
             <div class="metrics">
               <div class="metric-cell">
-                <span class="metric-label">单次写入目标</span>
-                <span class="metric-val">≤ ${preset.softTargetLines} 行</span>
+                <span class="metric-label">${d.metricSoftTarget}</span>
+                <span class="metric-val">≤ ${d.linesUnit(preset.softTargetLines)}</span>
               </div>
               <div class="metric-cell">
-                <span class="metric-label">单次写入警戒线</span>
-                <span class="metric-val">${preset.warnWriteLines} 行 / ${preset.warnWriteKb} KB</span>
+                <span class="metric-label">${d.metricWarnWrite}</span>
+                <span class="metric-val">${d.linesUnit(preset.warnWriteLines)} / ${preset.warnWriteKb} KB</span>
               </div>
               <div class="metric-cell full">
-                <span class="metric-label">edit_file 合计警戒线</span>
-                <span class="metric-val">${preset.warnEditCombinedLines} 行 / ${preset.warnEditCombinedKb} KB</span>
+                <span class="metric-label">${d.metricWarnEdit}</span>
+                <span class="metric-val">${d.linesUnit(preset.warnEditCombinedLines)} / ${preset.warnEditCombinedKb} KB</span>
               </div>
             </div>
           `;
@@ -1317,64 +1667,62 @@
             if (!writeGuard.enabled || preset.id === writeGuard.presetId) return;
             patchSettings(
               { writeGuard: { presetId: preset.id } },
-              `正在切换至 ${preset.id} 行档…`,
-              (next) => `分段写入已切换为 ${next.activeWritePreset.label}（AGENTS.md 已同步）`,
+              () => dict().writePresetPending(preset.id),
+              (next) => () => dict().writePresetDone(getWritePresetCopy(next.activeWritePreset).label),
             );
           });
           writePresetListEl.appendChild(btn);
         }
 
+        const activeRespCopy = getRespPresetCopy(state.activeResponsivePreset);
         respEnabledToggle.setAttribute('aria-checked', String(responsive.enabled));
         respMasterDescEl.textContent = responsive.enabled
-          ? `已启用（${state.activeResponsivePreset.label}），要求先回话并在长任务途中汇报`
-          : '已关闭，已从 AGENTS.md 移除响应汇报规则并停用 Hook';
+          ? d.respMasterOn(activeRespCopy.label)
+          : d.respMasterOff;
         respHookToggle.setAttribute('aria-checked', String(responsive.hookEnabled));
         respHookDescEl.textContent = responsive.hookEnabled
-          ? `上一轮开场空正文调工具或中途连续 ${responsive.silentThreshold} 次静默调工具时，下一条消息纠偏`
-          : '已关闭，仅靠常驻规则约束，不向模型上下文注入纠偏提醒';
+          ? d.respHookOn(responsive.silentThreshold)
+          : d.respHookOff;
 
         respPresetListEl.innerHTML = '';
         for (const preset of state.responsivePresets) {
           const isActive = preset.threshold === responsive.silentThreshold;
+          const presetCopy = getRespPresetCopy(preset);
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'preset-card';
           btn.setAttribute('aria-pressed', String(isActive));
           btn.innerHTML = `
             <div class="card-top">
-              <span class="card-title">${preset.label}</span>
-              <span class="action-pill">${isActive ? '● 生效中' : '切换'}</span>
+              <span class="card-title">${presetCopy.label}</span>
+              <span class="action-pill">${isActive ? d.pillActive : d.pillSwitch}</span>
             </div>
-            <p class="card-desc">${preset.summary}</p>
+            <p class="card-desc">${presetCopy.summary}</p>
           `;
           btn.addEventListener('click', () => {
             if (!responsive.enabled || preset.threshold === responsive.silentThreshold) return;
             patchSettings(
               { responsive: { silentThreshold: preset.threshold } },
-              `正在切换静默阈值为 ${preset.threshold} 次…`,
-              (next) => `响应汇报静默阈值已切换为 ${next.activeResponsivePreset.label}`,
+              () => dict().respPresetPending(preset.threshold),
+              (next) => () => dict().respPresetDone(getRespPresetCopy(next.activeResponsivePreset).label),
             );
           });
           respPresetListEl.appendChild(btn);
         }
 
         localeEnabledToggle.setAttribute('aria-checked', String(toolLocale.enabled));
-        localeMasterDescEl.textContent = toolLocale.enabled
-          ? '已启用，要求步骤标题、聚焦状态和命令摘要使用中文短语'
-          : '已关闭，已从 AGENTS.md 移除中文摘要规则并停用 Hook';
+        localeMasterDescEl.textContent = toolLocale.enabled ? d.localeMasterOn : d.localeMasterOff;
         localeHookToggle.setAttribute('aria-checked', String(toolLocale.hookEnabled));
-        localeHookDescEl.textContent = toolLocale.hookEnabled
-          ? '检测到纯英文摘要后，在同轮下一次模型调用前立即提醒一次，不阻断命令执行'
-          : '已关闭，仅靠常驻规则约束，不注入同轮纠偏提醒';
+        localeHookDescEl.textContent = toolLocale.hookEnabled ? d.localeHookOn : d.localeHookOff;
 
         renderStats(state.stats);
         syncInteractiveState();
       };
 
-      const runMutation = async (pendingText, action, onSuccess, failPrefix) => {
+      const runMutation = async (pendingFactory, action, onSuccess, failFormatter) => {
         if (busy) return;
         busy = true;
-        if (pendingText) setStatus(pendingText, '');
+        if (pendingFactory) setStatus(pendingFactory, '');
         syncInteractiveState();
 
         let nextState = null;
@@ -1394,24 +1742,24 @@
         }
 
         syncInteractiveState();
-        setStatus(`${failPrefix}：${errorMessage}`, 'err');
+        setStatus(() => failFormatter(errorMessage), 'err');
       };
 
-      const patchSettings = (patch, pendingText, successMsg) =>
+      const patchSettings = (patch, pendingFactory, successFactory) =>
         runMutation(
-          pendingText,
+          pendingFactory,
           () => postJson('/api/settings', patch),
-          (state) => setStatus(typeof successMsg === 'function' ? successMsg(state) : successMsg, 'ok'),
-          '更新设置失败',
+          (state) => setStatus(successFactory(state), 'ok'),
+          (msg) => dict().updateSettingsFail(msg),
         );
 
       const resetStats = () => {
         if (resetStatsBtn.disabled) return;
         return runMutation(
-          '',
+          null,
           () => postJson('/api/stats/reset', {}),
-          () => setStatus('触发统计已清零', 'ok'),
-          '清零失败',
+          () => setStatus(() => dict().statsResetDone, 'ok'),
+          (msg) => dict().resetStatsFail(msg),
         );
       };
 
@@ -1424,11 +1772,12 @@
           const state = await res.json();
           render(state);
           if (!silent || statusKind === '') {
-            setStatus(formatTriggerTime(state.stats?.lastTriggeredAt), '');
+            setStatus(() => formatTriggerTime(lastStats.lastTriggeredAt), '');
           }
         } catch (err) {
           if (!silent) {
-            setStatus(`读取状态失败：${err.message}`, 'err');
+            const msg = err.message;
+            setStatus(() => dict().loadStateFail(msg), 'err');
           }
         } finally {
           loading = false;
@@ -1570,13 +1919,36 @@
 
       const formatMegabytes = (bytes) => `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 
+      const formatUpdateSummary = (state) => {
+        const s = dict().updateSummary;
+        const st = state?.status;
+        if (st === 'checking') return s.checking();
+        if (st === 'current') return s.current(state);
+        if (st === 'available') return s.available(state);
+        if (st === 'installing') {
+          if (state.phase === 'download') return s.download(state);
+          if (state.phase === 'verify') return s.verify(state);
+          if (state.phase === 'backup') return s.backup();
+          if (state.phase === 'install') return s.install();
+          if (state.phase === 'recover') return s.recover();
+        }
+        if (st === 'installed') return s.installed(state);
+        if (st === 'reloading') return s.reloading();
+        if (st === 'error') {
+          if (state.phase === 'check') return s.errorCheck();
+          if (state.phase === 'request') return s.errorRequest();
+          if (state.phase === 'reload-timeout') return s.errorReloadTimeout();
+          return s.errorInstall();
+        }
+        return state?.message || s.fallback();
+      };
+
       const triggerReload = () => {
         stopReloadCountdown();
         stopUpdatePoll();
         renderUpdateState({
           ...updateState,
           status: 'reloading',
-          message: '正在重启面板服务并加载新版本…',
           error: null,
         });
         // 宿主可能已提前触发重启导致请求断连，由 startReloadWatch 统一探活刷新
@@ -1587,9 +1959,8 @@
         if (reloadCountdownTimer !== null) return;
         reloadCountdownLeft = seconds;
         const syncCountdownText = () => {
-          const ver = updateState.currentVersion ? ` v${updateState.currentVersion}` : '';
-          updateSummaryEl.textContent = `更新成功${ver}`;
-          updateDetailEl.textContent = `${reloadCountdownLeft} 秒后自动重新加载…`;
+          updateSummaryEl.textContent = dict().updateSummary.installed(updateState);
+          updateDetailEl.textContent = dict().updateReloadCountdown(reloadCountdownLeft);
           updateDetailEl.className = 'update-detail';
         };
         syncCountdownText();
@@ -1625,8 +1996,8 @@
             renderUpdateState({
               ...updateState,
               status: 'error',
-              message: '等待面板重启超时',
-              error: '请重新打开 Antigravity Rail 侧边栏面板以加载新版本。',
+              phase: 'reload-timeout',
+              error: null,
             });
           }
         };
@@ -1636,6 +2007,7 @@
       };
 
       const renderUpdateState = (state) => {
+        const d = dict();
         updateState = state || { status: 'idle' };
         const st = updateState.status;
         const locked = isUpdateLocked();
@@ -1658,13 +2030,15 @@
         updateIconEl.textContent = iconCfg.text;
 
         if (st !== 'installed' || reloadCountdownTimer === null) {
-          updateSummaryEl.textContent = updateState.message || '准备检查更新…';
+          updateSummaryEl.textContent = formatUpdateSummary(updateState);
         }
         const detailText =
           st === 'error'
-            ? updateState.error || '未知错误'
+            ? updateState.phase === 'reload-timeout'
+              ? d.updateReloadTimeoutDetail
+              : updateState.error || d.updateUnknownError
             : st === 'available' && updateState.source === 'tag'
-              ? '当前仓库尚未发布 Release，已自动回退至最新稳定标签。'
+              ? d.updateTagFallback
               : '';
         if (st !== 'installed') {
           updateDetailEl.textContent = detailText;
@@ -1689,7 +2063,7 @@
           updateProgressFill.style.width = '';
           updateProgressMeta.textContent =
             st === 'installing' && dl?.downloadedBytes > 0
-              ? `已下载 ${formatMegabytes(dl.downloadedBytes)}`
+              ? d.updateDownloaded(formatMegabytes(dl.downloadedBytes))
               : '';
         }
 
@@ -1697,7 +2071,10 @@
           !isCompactSuccess && Boolean(updateState.currentVersion && updateState.latestVersion);
         updateVersionMeta.className = hasVersions ? 'version-meta show' : 'version-meta';
         if (hasVersions) {
-          updateVersionPair.textContent = `当前 v${updateState.currentVersion} → 最新 v${updateState.latestVersion}`;
+          updateVersionPair.textContent = d.updateVersionPair(
+            updateState.currentVersion,
+            updateState.latestVersion,
+          );
           const safeUrl =
             typeof updateState.releaseUrl === 'string' &&
             updateState.releaseUrl.startsWith('https://github.com/')
@@ -1717,8 +2094,8 @@
         updateNotesEl.className = showNotes ? 'md-notes show' : 'md-notes';
 
         const actionLabelMap = {
-          available: '立即更新',
-          error: '重试',
+          available: d.updateActionAvailable,
+          error: d.updateActionRetry,
         };
         const actionLabel = actionLabelMap[st] || '';
         updateActionBtn.hidden = !actionLabel;
@@ -1763,7 +2140,7 @@
           renderUpdateState({
             ...updateState,
             status: 'error',
-            message: '更新请求失败',
+            phase: 'request',
             error: err.message,
           });
         }
@@ -1776,7 +2153,7 @@
         renderUpdateState({
           ...updateState,
           status: 'checking',
-          message: '正在检查更新状态…',
+          phase: 'check',
           error: null,
         });
         return requestUpdate({ action: 'check' });
@@ -1796,21 +2173,21 @@
         changelogContentEl.replaceChildren();
         const loadingLine = document.createElement('p');
         loadingLine.className = 'md-p';
-        loadingLine.textContent = '正在读取变更日志…';
+        loadingLine.textContent = dict().changelogLoading;
         changelogContentEl.appendChild(loadingLine);
 
         try {
           const res = await apiFetch('/api/changelog', { method: 'GET' });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const data = await res.json();
-          changelogVersionHintEl.textContent = data.version ? `当前版本 v${data.version}` : '';
+          changelogVersionHintEl.textContent = data.version ? dict().changelogVersion(data.version) : '';
           if (data.markdown) {
             renderMarkdown(changelogContentEl, data.markdown);
           } else {
-            renderMarkdown(changelogContentEl, '暂无本地变更日志记录。');
+            renderMarkdown(changelogContentEl, dict().changelogEmpty);
           }
         } catch (err) {
-          renderMarkdown(changelogContentEl, `读取变更日志失败：${err.message}`);
+          renderMarkdown(changelogContentEl, dict().changelogFail(err.message));
         }
       };
 
@@ -1820,6 +2197,24 @@
         }
       };
 
+      const switchLanguage = () => {
+        currentLang = currentLang === 'zh' ? 'en' : 'zh';
+        try {
+          window.localStorage.setItem(LANG_STORAGE_KEY, currentLang);
+        } catch {
+          // 忽略禁用存储环境下的异常
+        }
+        applyStaticTranslations();
+        if (lastPanelState) {
+          render(lastPanelState);
+        }
+        statusMsgEl.textContent = lastStatusFactory();
+        if (updateDialog.open) {
+          renderUpdateState(updateState);
+        }
+      };
+
+      langToggleBtn.addEventListener('click', switchLanguage);
       versionTagEl.addEventListener('click', openChangelogDialog);
       changelogCloseIcon.addEventListener('click', closeChangelogDialog);
       changelogCloseBtn.addEventListener('click', closeChangelogDialog);
@@ -1827,14 +2222,14 @@
         if (event.target === changelogDialog) closeChangelogDialog();
       });
 
-      const bindToggle = (el, moduleKey, fieldKey, copy) => {
+      const bindToggle = (el, moduleKey, fieldKey, copyKey) => {
         el.addEventListener('click', () => {
           if (fieldKey !== 'enabled' && !currentSettings[moduleKey].enabled) return;
           const next = !currentSettings[moduleKey][fieldKey];
           patchSettings(
             { [moduleKey]: { [fieldKey]: next } },
-            next ? copy.onPending : copy.offPending,
-            next ? copy.onDone : copy.offDone,
+            () => (next ? dict().toggles[copyKey].onPending : dict().toggles[copyKey].offPending),
+            () => () => (next ? dict().toggles[copyKey].onDone : dict().toggles[copyKey].offDone),
           );
         });
       };
@@ -1843,42 +2238,12 @@
         btn.addEventListener('click', () => selectTab(btn.dataset.tab));
       }
 
-      bindToggle(writeEnabledToggle, 'writeGuard', 'enabled', {
-        onPending: '正在启用分段写入模块…',
-        offPending: '正在关闭分段写入模块…',
-        onDone: '已启用分段写入模块（AGENTS.md 已同步）',
-        offDone: '已关闭分段写入模块（规则章节已移除）',
-      });
-      bindToggle(writeHookToggle, 'writeGuard', 'hookEnabled', {
-        onPending: '正在开启超限事后提醒 Hook…',
-        offPending: '正在关闭超限事后提醒 Hook…',
-        onDone: '已开启超限事后提醒 Hook',
-        offDone: '已关闭超限事后提醒 Hook（仅保留统计）',
-      });
-      bindToggle(respEnabledToggle, 'responsive', 'enabled', {
-        onPending: '正在启用响应汇报模块…',
-        offPending: '正在关闭响应汇报模块…',
-        onDone: '已启用响应汇报模块（AGENTS.md 已同步）',
-        offDone: '已关闭响应汇报模块（规则章节已移除）',
-      });
-      bindToggle(respHookToggle, 'responsive', 'hookEnabled', {
-        onPending: '正在开启响应汇报 Hook…',
-        offPending: '正在关闭响应汇报 Hook…',
-        onDone: '已开启响应汇报轮间纠偏 Hook',
-        offDone: '已关闭响应汇报 Hook（仅保留常驻规则）',
-      });
-      bindToggle(localeEnabledToggle, 'toolLocale', 'enabled', {
-        onPending: '正在启用摘要中文模块…',
-        offPending: '正在关闭摘要中文模块…',
-        onDone: '已启用摘要中文模块（AGENTS.md 已同步）',
-        offDone: '已关闭摘要中文模块（规则章节已移除）',
-      });
-      bindToggle(localeHookToggle, 'toolLocale', 'hookEnabled', {
-        onPending: '正在开启摘要中文同轮 Hook…',
-        offPending: '正在关闭摘要中文同轮 Hook…',
-        onDone: '已开启摘要中文同轮纠偏 Hook',
-        offDone: '已关闭摘要中文 Hook（仅保留常驻规则）',
-      });
+      bindToggle(writeEnabledToggle, 'writeGuard', 'enabled', 'writeEnabled');
+      bindToggle(writeHookToggle, 'writeGuard', 'hookEnabled', 'writeHook');
+      bindToggle(respEnabledToggle, 'responsive', 'enabled', 'respEnabled');
+      bindToggle(respHookToggle, 'responsive', 'hookEnabled', 'respHook');
+      bindToggle(localeEnabledToggle, 'toolLocale', 'enabled', 'localeEnabled');
+      bindToggle(localeHookToggle, 'toolLocale', 'hookEnabled', 'localeHook');
 
       resetStatsBtn.addEventListener('click', resetStats);
       checkUpdateBtn.addEventListener('click', openUpdateDialog);
@@ -1915,6 +2280,7 @@
         if (document.visibilityState === 'visible') refreshOnReturn();
       });
 
+      applyStaticTranslations();
       loadState();
     })();
   </script>

@@ -75,10 +75,11 @@ test('handleUpdateSettings validates input, syncs AGENTS.md sections, and skips 
     assert.equal(first.changed, true);
 
     const rules = fs.readFileSync(ws.rulesPath, 'utf8');
-    assert.match(rules, /## 分段写入规范/);
-    assert.match(rules, /单次写入目标 ≤ 300 行/);
-    assert.doesNotMatch(rules, /## 先回话，再动手/);
-    assert.match(rules, /## 工具状态与摘要保持中文/);
+    assert.match(rules, /## Chunked Write Guard/);
+    assert.match(rules, /Target ≤ 300 lines per write/);
+    assert.doesNotMatch(rules, /## Reply First, Report Progress/);
+    assert.match(rules, /## Match User's Language for Tool Summaries/);
+    assert.doesNotMatch(rules, /[\u4e00-\u9fff]/);
 
     // 2. 重复提交相同配置不重写文件
     const mtimeBefore = fs.statSync(ws.rulesPath).mtimeMs;
@@ -98,7 +99,7 @@ test('handleUpdateSettings validates input, syncs AGENTS.md sections, and skips 
     );
     assert.equal(allOff.ok, true);
     const minimalRules = fs.readFileSync(ws.rulesPath, 'utf8');
-    assert.match(minimalRules, /全部护栏模块已关闭/);
+    assert.match(minimalRules, /all guardrail modules are disabled/);
     assert.doesNotMatch(minimalRules, /## /);
 
     // 4. syncRulesFromSettings 保留已有配置不重置
@@ -113,17 +114,19 @@ test('handleUpdateSettings validates input, syncs AGENTS.md sections, and skips 
 
 test('renderAgentsRule includes all three sections by default and omits oversize hook item when hookEnabled=false', () => {
   const full = renderAgentsRule(DEFAULT_SETTINGS);
-  assert.match(full, /## 分段写入规范/);
-  assert.match(full, /超限检测与事后提醒/);
-  assert.match(full, /## 先回话，再动手/);
-  assert.match(full, /## 工具状态与摘要保持中文/);
+  assert.match(full, /## Chunked Write Guard/);
+  assert.match(full, /Oversize detection & post-write reminder/);
+  assert.match(full, /## Reply First, Report Progress/);
+  assert.match(full, /clickable Markdown link/);
+  assert.match(full, /## Match User's Language for Tool Summaries/);
+  assert.doesNotMatch(full, /[\u4e00-\u9fff]/);
 
   const noWriteHook = renderAgentsRule({
     ...DEFAULT_SETTINGS,
     writeGuard: { ...DEFAULT_SETTINGS.writeGuard, hookEnabled: false },
   });
-  assert.match(noWriteHook, /## 分段写入规范/);
-  assert.doesNotMatch(noWriteHook, /超限检测与事后提醒/);
+  assert.match(noWriteHook, /## Chunked Write Guard/);
+  assert.doesNotMatch(noWriteHook, /Oversize detection & post-write reminder/);
 });
 
 test('stats records all four event types, skips corrupted lines, and resets cleanly', () => {

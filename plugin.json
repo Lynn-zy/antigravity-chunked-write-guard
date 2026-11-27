@@ -2,7 +2,7 @@
   "name": "antigravity-rail",
   "displayName": "Antigravity Rail",
   "version": "3.0.0",
-  "description": "Unified Antigravity agent guardrails: chunked file writes (700/500/300 presets), responsive opening & progress replies, and Chinese tool UI summaries, controlled live from a side-pane UI.",
+  "description": "Unified Antigravity agent guardrails: chunked file writes (700/500/300 presets), responsive opening & progress replies, and user-language tool UI summaries, controlled live from a side-pane UI.",
   "author": {
     "name": "Lynn-zy",
     "url": "https://github.com/Lynn-zy"

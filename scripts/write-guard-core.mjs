@@ -38,7 +38,7 @@ export const measureText = (text) => {
 
 const formatKilobytes = (bytes) => `${(bytes / 1024).toFixed(1)} KB`;
 
-const formatTargetLabel = (filePath) => (filePath ? `「${filePath}」` : '目标文件');
+const formatTargetLabel = (filePath) => (filePath ? `"${filePath}"` : 'the target file');
 
 const pickStringArg = (args, primaryKey, fallbackKey) => {
   const value = args?.[primaryKey] ?? args?.[fallbackKey];
@@ -218,25 +218,25 @@ const formatSingleNoticeLine = (item) => {
   const targetLabel = formatTargetLabel(item.filePath);
   const scopeLabel =
     item.kind === 'edit-combined'
-      ? `Target + Replacement 合计 ${item.lines} 行 / ${formatKilobytes(item.bytes)}`
-      : `${item.lines} 行 / ${formatKilobytes(item.bytes)}`;
-  const limitLabel = `${item.limitLines} 行 / ${formatKilobytes(item.limitBytes)}`;
-  return `${item.toolName} 写入${targetLabel}（${scopeLabel}，警戒线 ${limitLabel}）`;
+      ? `Target + Replacement: ${item.lines} lines / ${formatKilobytes(item.bytes)}`
+      : `${item.lines} lines / ${formatKilobytes(item.bytes)}`;
+  const limitLabel = `${item.limitLines} lines / ${formatKilobytes(item.limitBytes)}`;
+  return `${item.toolName} to ${targetLabel} (${scopeLabel}, limit ${limitLabel})`;
 };
 
 const buildOversizeReminderMessage = (notices, config) => {
   const hasCombinedEdit = notices.some((item) => item.kind === 'edit-combined');
   const detailText =
     notices.length === 1
-      ? `刚才的 ${formatSingleNoticeLine(notices[0])} 已放行落盘，但超过当前 ${config.label} 的超限警戒线。`
+      ? `The previous ${formatSingleNoticeLine(notices[0])} was allowed to finish, but exceeded the warning limit for the ${config.label} preset.`
       : [
-          `刚才有 ${notices.length} 次超限写入已放行落盘，超过当前 ${config.label} 的超限警戒线：`,
+          `The previous ${notices.length} oversize writes were allowed to finish, but exceeded the warning limit for the ${config.label} preset:`,
           ...notices.map((item) => `- ${formatSingleNoticeLine(item)}`),
         ].join('\n');
 
   const advice = hasCombinedEdit
-    ? `接下来修改其他长文件时，请回到 ≤ ${config.softTargetLines} 行分步落盘，并缩小 edit_file 的 Target 锚点范围，避免单次输出过长拖慢流式响应或中断。`
-    : `接下来新建或修改其他长文件时，请回到 ≤ ${config.softTargetLines} 行分步落盘（先写骨架，再用 write_file(Append: true) 或局部 edit_file 补齐），避免单次输出过长拖慢流式响应或中断。`;
+    ? `For subsequent edits to large files, keep each write within ≤ ${config.softTargetLines} lines and narrow your edit_file Target anchor to avoid slow or interrupted streaming.`
+    : `For subsequent large files, split writes into ≤ ${config.softTargetLines}-line chunks (write the skeleton first, then fill in via write_file(Append: true) or targeted edit_file) to avoid slow or interrupted streaming.`;
 
   return `${config.reminderMarker} ${detailText}\n${advice}`;
 };
