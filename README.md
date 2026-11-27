@@ -141,8 +141,16 @@ Keeps `update_steps` titles (`title`), `update_focus` status messages (`focus`),
 
 ## Live Side-Pane Control
 
+**Dark Mode**
+
 <p align="center">
-  <img src="./assets/readme/panel-showcase.png" width="100%" alt="Antigravity Rail Sidecar panel showing all three tabs: Write Guard, Responsive, and Tool Locale, with live toggles, presets, trigger counters, and recent trigger records">
+  <img src="./assets/readme/panel-showcase-dark.png" width="100%" alt="Antigravity Rail Sidecar panel in dark mode showing all three tabs: Write Guard, Responsive, and Tool Locale, with live toggles, presets, trigger counters, and recent trigger records">
+</p>
+
+**Light Mode**
+
+<p align="center">
+  <img src="./assets/readme/panel-showcase-light.png" width="100%" alt="Antigravity Rail Sidecar panel in light mode showing all three tabs: Write Guard, Responsive, and Tool Locale, with live toggles, presets, trigger counters, and recent trigger records">
 </p>
 
 - **Theme & language**: Follows Antigravity's dark and light themes automatically and switches live between English and Chinese in the header.
@@ -174,7 +182,7 @@ flowchart LR
 
 ## Development & Status
 
-**Status**: Actively maintained (`v3.0.0`, 2026-11-26), used daily by the author. Bug reports and PRs are welcome via [GitHub Issues](https://github.com/Lynn-zy/antigravity-rail/issues); full release history is in [`CHANGELOG.md`](./CHANGELOG.md).
+**Status**: Actively maintained (`v3.0.0`, 2026-11-27), used daily by the author. Bug reports and PRs are welcome via [GitHub Issues](https://github.com/Lynn-zy/antigravity-rail/issues); full release history is in [`CHANGELOG.md`](./CHANGELOG.md).
 
 Run the built-in Node test suite (**29** unit and CLI tests, zero dependencies):
 

@@ -141,8 +141,16 @@ bash ./scripts/install.sh --uninstall
 
 ## 侧边栏实时面板
 
+**暗黑模式**
+
 <p align="center">
-  <img src="./assets/readme/panel-showcase-zh.png" width="100%" alt="Antigravity Rail 侧边栏面板实景截图，展示分段写入、响应汇报、摘要语言三个标签页的开关、档位卡片、四项累计统计与最近 3 条触发记录">
+  <img src="./assets/readme/panel-showcase-dark-zh.png" width="100%" alt="Antigravity Rail 侧边栏面板暗黑模式实拍截图，完整展示分段写入、响应汇报、摘要语言三个标签页的开关、档位卡片、四项累计统计与最近 3 条触发记录">
+</p>
+
+**明亮模式**
+
+<p align="center">
+  <img src="./assets/readme/panel-showcase-light-zh.png" width="100%" alt="Antigravity Rail 侧边栏面板明亮模式实拍截图，完整展示分段写入、响应汇报、摘要语言三个标签页的开关、档位卡片、四项累计统计与最近 3 条触发记录">
 </p>
 
 - **主题与双语界面**：自动适配 Antigravity 暗色与浅色主题，顶栏支持实时切换中文与英文界面。
@@ -174,7 +182,7 @@ flowchart LR
 
 ## 本地开发与项目状态
 
-**项目状态**：积极维护中（当前版本 `v3.0.0`，2026-11-26），作者日常主力使用。欢迎通过 [GitHub Issues](https://github.com/Lynn-zy/antigravity-rail/issues) 反馈问题或提交 PR，完整版本记录见 [`CHANGELOG.md`](./CHANGELOG.md)。
+**项目状态**：积极维护中（当前版本 `v3.0.0`，2026-11-27），作者日常主力使用。欢迎通过 [GitHub Issues](https://github.com/Lynn-zy/antigravity-rail/issues) 反馈问题或提交 PR，完整版本记录见 [`CHANGELOG.md`](./CHANGELOG.md)。
 
 运行 Node 内置测试套件（共 **29** 条单测与 CLI 集成测试，零外部依赖）：
 
