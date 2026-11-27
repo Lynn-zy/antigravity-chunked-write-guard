@@ -14,8 +14,77 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Stop-RunningSidecar {
+    param(
+        [string]$PluginDir,
+        [ValidateSet("restart", "uninstall")]
+        [string]$Mode = "restart"
+    )
+
+    $PidFile = Join-Path $PluginDir "config\sidecar.pid"
+    if (-not (Test-Path $PidFile)) {
+        return
+    }
+
+    $SidecarPid = 0
+    $StartedAtMs = $null
+    try {
+        $Raw = Get-Content -Path $PidFile -Raw -Encoding UTF8
+        $Parsed = $Raw | ConvertFrom-Json
+        if ($Parsed -and $Parsed.PSObject.Properties["pid"]) {
+            $SidecarPid = [int]$Parsed.pid
+        }
+        if ($Parsed -and $Parsed.PSObject.Properties["startedAt"]) {
+            $StartedAtMs = [int64]$Parsed.startedAt
+        }
+    } catch {
+        Remove-Item -Path $PidFile -Force -ErrorAction SilentlyContinue
+        return
+    }
+
+    if ($SidecarPid -le 0 -or $SidecarPid -eq $PID) {
+        Remove-Item -Path $PidFile -Force -ErrorAction SilentlyContinue
+        return
+    }
+
+    $Proc = Get-Process -Id $SidecarPid -ErrorAction SilentlyContinue
+    if (-not $Proc) {
+        Remove-Item -Path $PidFile -Force -ErrorAction SilentlyContinue
+        return
+    }
+
+    # 校验进程名与启动时间，避免系统 PID 复用导致误杀无关进程
+    $IsMatchingNode = $Proc.ProcessName -ieq "node"
+    if ($IsMatchingNode -and $null -ne $StartedAtMs) {
+        try {
+            $RecordedUtc = [DateTimeOffset]::FromUnixTimeMilliseconds($StartedAtMs).UtcDateTime
+            if ($Proc.StartTime.ToUniversalTime() -gt $RecordedUtc.AddSeconds(60)) {
+                $IsMatchingNode = $false
+            }
+        } catch {
+            # 无法读取进程启动时间时保留进程名校验结果
+        }
+    }
+
+    if (-not $IsMatchingNode) {
+        Remove-Item -Path $PidFile -Force -ErrorAction SilentlyContinue
+        return
+    }
+
+    Stop-Process -Id $SidecarPid -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $PidFile -Force -ErrorAction SilentlyContinue
+
+    if ($Mode -eq "uninstall") {
+        Start-Sleep -Milliseconds 200
+        Write-Host "[antigravity-rail] 已停止运行中的侧边栏 Sidecar（PID $SidecarPid）" -ForegroundColor Cyan
+    } else {
+        Write-Host "[antigravity-rail] 已触发侧边栏 Sidecar 重启（PID $SidecarPid），宿主将自动拉起新版本" -ForegroundColor Cyan
+    }
+}
+
 if ($Uninstall) {
     if (Test-Path $TargetDir) {
+        Stop-RunningSidecar -PluginDir $TargetDir -Mode "uninstall"
         Remove-Item -Path $TargetDir -Recurse -Force
         Write-Host "[antigravity-rail] 已卸载：$TargetDir" -ForegroundColor Green
     } else {
@@ -74,3 +143,5 @@ try {
 } finally {
     Pop-Location
 }
+
+Stop-RunningSidecar -PluginDir $TargetDir -Mode "restart"

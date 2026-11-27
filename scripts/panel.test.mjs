@@ -17,6 +17,8 @@ import {
   handleResetStats,
   handleUpdateSettings,
   readChangelog,
+  removeSidecarPidFile,
+  writeSidecarPidFile,
 } from '../sidecars/panel/panel-logic.mjs';
 
 const createTempWorkspace = () => {
@@ -171,6 +173,31 @@ test('stats records all four event types, keeps latest 3 recent events newest-fi
     const changelog = readChangelog();
     assert.match(changelog.markdown, /## \[3\.0\.0\]/);
     assert.equal(readChangelog({ changelogPath: path.join(ws.tempDir, 'MISSING.md') }).markdown, '');
+  } finally {
+    ws.cleanup();
+  }
+});
+
+test('writeSidecarPidFile and removeSidecarPidFile guard against deleting a newer process PID', () => {
+  const ws = createTempWorkspace();
+  const pidPath = path.join(ws.tempDir, 'config', 'sidecar.pid');
+  try {
+    assert.equal(writeSidecarPidFile({ pidPath, pid: 0 }), false);
+    assert.equal(writeSidecarPidFile({ pidPath, pid: 12345, startedAt: 1700000000000 }), true);
+
+    const written = JSON.parse(fs.readFileSync(pidPath, 'utf8'));
+    assert.deepEqual(written, { pid: 12345, startedAt: 1700000000000 });
+
+    // 另一进程接管 PID 文件后，旧进程退出不能误删
+    assert.equal(removeSidecarPidFile({ pidPath, pid: 99999 }), false);
+    assert.equal(fs.existsSync(pidPath), true);
+
+    // 仅 PID 匹配时删除
+    assert.equal(removeSidecarPidFile({ pidPath, pid: 12345 }), true);
+    assert.equal(fs.existsSync(pidPath), false);
+
+    // 文件缺失时幂等返回 false
+    assert.equal(removeSidecarPidFile({ pidPath, pid: 12345 }), false);
   } finally {
     ws.cleanup();
   }

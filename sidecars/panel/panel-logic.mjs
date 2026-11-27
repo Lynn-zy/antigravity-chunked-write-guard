@@ -19,6 +19,7 @@ const PANEL_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = path.resolve(PANEL_DIR, '..', '..');
 const DEFAULT_MANIFEST_PATH = path.join(PLUGIN_ROOT, 'plugin.json');
 const DEFAULT_CHANGELOG_PATH = path.join(PLUGIN_ROOT, 'CHANGELOG.md');
+export const DEFAULT_SIDECAR_PID_PATH = path.join(PLUGIN_ROOT, 'config', 'sidecar.pid');
 
 const ALLOWED_MODULE_KEYS = new Set(['writeGuard', 'responsive', 'toolLocale']);
 
@@ -158,4 +159,46 @@ export const readChangelog = (options = {}) => {
     version: readPluginVersion(options.manifestPath),
     markdown,
   };
+};
+
+/**
+ * 将当前运行中的 Sidecar 进程 PID 与启动时间戳写入 config/sidecar.pid，供安装脚本精准重启。
+ * @param {{ pidPath?: string, pid?: number, startedAt?: number }} [options] - 可选路径与进程信息覆盖
+ * @returns {boolean} 是否写入成功
+ */
+export const writeSidecarPidFile = (options = {}) => {
+  const pidPath = options.pidPath ?? DEFAULT_SIDECAR_PID_PATH;
+  const pid = Number(options.pid ?? process.pid);
+  const startedAt = Number(options.startedAt ?? Date.now());
+  if (!Number.isInteger(pid) || pid <= 0) {
+    return false;
+  }
+  try {
+    fs.mkdirSync(path.dirname(pidPath), { recursive: true });
+    fs.writeFileSync(pidPath, `${JSON.stringify({ pid, startedAt })}\n`, 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 仅当 config/sidecar.pid 记录的 PID 仍为当前进程时删除该文件，避免旧进程退出时误删新拉起进程的 PID。
+ * @param {{ pidPath?: string, pid?: number }} [options] - 可选路径与目标 PID 覆盖
+ * @returns {boolean} 是否实际执行了删除
+ */
+export const removeSidecarPidFile = (options = {}) => {
+  const pidPath = options.pidPath ?? DEFAULT_SIDECAR_PID_PATH;
+  const expectedPid = Number(options.pid ?? process.pid);
+  try {
+    const raw = fs.readFileSync(pidPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Number(parsed?.pid) !== expectedPid) {
+      return false;
+    }
+    fs.rmSync(pidPath, { force: true });
+    return true;
+  } catch {
+    return false;
+  }
 };

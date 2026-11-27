@@ -1,6 +1,7 @@
-# 运行期用户选择的档位与触发统计日志
+# 运行期用户选择的档位、PID 与触发统计日志
 config/active-preset.json
 config/events.jsonl
+config/sidecar.pid
 *.tmp
 
 # 常规依赖与系统垃圾文件

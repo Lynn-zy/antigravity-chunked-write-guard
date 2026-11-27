@@ -8,6 +8,8 @@ import {
   handleResetStats,
   handleUpdateSettings,
   readChangelog,
+  removeSidecarPidFile,
+  writeSidecarPidFile,
 } from './panel-logic.mjs';
 import { PluginUpdater } from './updater.mjs';
 
@@ -48,7 +50,13 @@ const jsonErrorResponse = (Response, status, error) =>
 const start = async () => {
   const { SidecarApp, Response } = await loadSidecarSdk();
   const app = new SidecarApp();
+  let shuttingDown = false;
   const shutdown = () => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    removeSidecarPidFile();
     app.close().finally(() => process.exit(0));
   };
   const updater = new PluginUpdater({
@@ -89,9 +97,11 @@ const start = async () => {
   );
 
   await app.run();
+  writeSidecarPidFile();
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  process.on('exit', () => removeSidecarPidFile());
 };
 
 start().catch((error) => {
