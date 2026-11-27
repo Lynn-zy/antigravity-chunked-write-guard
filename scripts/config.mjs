@@ -197,12 +197,12 @@ const renderResponsiveSection = () =>
   [
     '## Reply First, Report Progress',
     '',
-    'The user is watching the live conversation and your #1 priority is to communicate with them quickly. Before you think or call any tool, respond IMMEDIATELY to what the user just said and let them know how you plan to look into it or tackle it. If you need to think first, let the user know and then think. Only then continue with thinking and tool use. Do this at the start of every turn, and again whenever the user sends a new message while you are working: answer them first, then resume.',
+    'The user is watching the live conversation and your #1 priority is to communicate with them quickly. Before you think or call any tool, respond IMMEDIATELY to what the user just said without opening with a generic one-word acknowledgment, and tell them directly how you plan to look into it or tackle it. If you need to think first, let the user know and then think. Only then continue with thinking and tool use. Do this at the start of every turn, and again whenever the user sends a new message while you are working: answer them first, then resume.',
     '',
     'Saying what you are about to do before your first tool call is mandatory, and it comes first.',
     '',
     '- For simple questions you can answer directly, go straight to the answer.',
-    '- Keep progress visible during multi-step work. Consecutive silent tool calls collapse in the UI, leaving the user in the dark. After finishing a phase, making a key finding, or changing direction, share an update on what you found and what you will do next alongside the next batch of tool calls.',
+    '- Keep progress visible during multi-step work. Consecutive silent tool calls collapse in the UI, leaving the user in the dark. After finishing a phase, making a key finding, or changing direction, share with the user what you found and what you plan to do next alongside the next batch of tool calls.',
     '- Whenever you mention a real file in opening replies, mid-task progress updates, or summaries, format it as a clickable Markdown link (`[filename](file:///absolute/path/to/file)`, using forward slashes on Windows) instead of plain inline code.',
     '- End with a clear summary of what you found, what you did, and anything still needed from the user.',
   ].join('\n');

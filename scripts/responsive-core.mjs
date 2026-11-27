@@ -22,7 +22,7 @@ const LINE_SUFFIX_RE = /(?:#L\d+(?:-L?\d+)?|:\d+(?:-\d+)?)$/i;
 
 /** @type {string} 上一轮未先回话或长时间静默时注入的纠偏提醒 */
 export const REMINDER = `<${REMINDER_TAG}>
-Respond right away to what the user just said before any thinking or tool use, letting them know what you plan to do next (or let them know first if you need to think). Then continue the work, and share a progress update whenever you finish a phase or make a key finding before the next batch of tool calls.
+Respond right away to what the user just said before any thinking or tool use, without opening with a generic one-word acknowledgment, and tell them directly what you plan to do next (or let them know first if you need to think). Then continue the work, and whenever you finish a phase or make a key finding, share with the user what you found and what you plan to do next before the next batch of tool calls.
 </${REMINDER_TAG}>`;
 
 /**
