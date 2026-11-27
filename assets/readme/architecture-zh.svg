@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="436" viewBox="0 0 1200 436"
+     role="img" aria-labelledby="arch-title-zh arch-desc-zh">
+  <title id="arch-title-zh">Antigravity Rail 非阻断护栏工作原理</title>
+  <desc id="arch-desc-zh">架构图展示侧边栏面板如何统一写入 config/settings.json 与 rules/AGENTS.md，驱动三个独立非阻断 Hook 检测与纠偏，并输出安全放行与触发统计。</desc>
+
+  <defs>
+    <marker id="arrow-slate-zh" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#64748B"/>
+    </marker>
+    <marker id="arrow-blue-zh" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#2563EB"/>
+    </marker>
+  </defs>
+
+  <!-- Crisp Light Canvas -->
+  <rect width="1200" height="436" rx="20" fill="#FFFFFF"/>
+  <rect x="1" y="1" width="1198" height="434" rx="19" fill="none" stroke="#E5E7EB" stroke-width="2"/>
+
+  <!-- Header -->
+  <text x="48" y="54" fill="#111827" font-size="25" font-weight="700"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">非阻断行为护栏工作原理</text>
+  <rect x="852" y="28" width="300" height="34" rx="17" fill="#F8FAFC" stroke="#E5E7EB" stroke-width="1.5"/>
+  <text x="1002" y="50" text-anchor="middle" fill="#4B5563" font-size="15.5" font-weight="600"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">单一配置源 · 异常自动放行</text>
+
+  <!-- Column 1: Control & Single Source of Truth -->
+  <g id="col-control-zh" transform="translate(48 86)">
+    <!-- Sidecar UI -->
+    <rect x="0" y="0" width="280" height="134" rx="14" fill="#F9FAFB" stroke="#E5E7EB" stroke-width="1.5"/>
+    <circle cx="24" cy="28" r="4.5" fill="#10B981"/>
+    <text x="38" y="34" fill="#111827" font-size="19.5" font-weight="700"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">侧边栏 Sidecar 面板</text>
+    <text x="20" y="68" fill="#374151" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">• 模块总开关与 Hook 开关</text>
+    <text x="20" y="96" fill="#374151" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">• 中 / 英界面实时切换</text>
+    <text x="20" y="122" fill="#6B7280" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">• 内置 GitHub 一键更新</text>
+
+    <!-- Down connector -->
+    <line x1="140" y1="134" x2="140" y2="168" stroke="#2563EB" stroke-width="1.8" marker-end="url(#arrow-blue-zh)"/>
+
+    <!-- Single Source of Truth -->
+    <rect x="0" y="176" width="280" height="140" rx="14" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
+    <text x="20" y="210" fill="#1D4ED8" font-size="18.5" font-weight="700"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">config/settings.json</text>
+    <text x="20" y="242" fill="#1E3A8A" font-size="17.5" font-weight="500"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">同步渲染 rules/AGENTS.md</text>
+    <text x="20" y="270" fill="#4B5563" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">关闭模块时彻底移除对应章节</text>
+    <text x="20" y="296" fill="#4B5563" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">Hook 实时读取最新档位</text>
+  </g>
+
+  <!-- Connectors Col 1 -> Col 2 -->
+  <path d="M 328 332 L 356 332 L 356 136 L 380 136" fill="none" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow-slate-zh)"/>
+  <path d="M 356 244 L 380 244" fill="none" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow-slate-zh)"/>
+  <path d="M 356 332 L 356 352 L 380 352" fill="none" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow-slate-zh)"/>
+
+  <!-- Column 2: Three Independent Hooks -->
+  <g id="col-hooks-zh" transform="translate(388 86)">
+    <!-- Hook 1 -->
+    <rect x="0" y="0" width="444" height="96" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+    <rect x="0" y="14" width="4" height="68" rx="2" fill="#2563EB"/>
+    <text x="22" y="34" fill="#111827" font-size="19.5" font-weight="700"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">write-guard</text>
+    <text x="424" y="33" text-anchor="end" fill="#2563EB" font-size="15.5" font-weight="600"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">PostToolUse → PreInv</text>
+    <text x="22" y="64" fill="#374151" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">落盘后统计行数与字节，不拦截写入</text>
+    <text x="22" y="86" fill="#6B7280" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">超限记录进 config/pending/，下轮提醒一次</text>
+
+    <!-- Hook 2 -->
+    <rect x="0" y="110" width="444" height="96" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+    <rect x="0" y="124" width="4" height="68" rx="2" fill="#64748B"/>
+    <text x="22" y="144" fill="#111827" font-size="19.5" font-weight="700"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">responsive-mode</text>
+    <text x="424" y="143" text-anchor="end" fill="#4B5563" font-size="15.5" font-weight="600"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">PreInvocation</text>
+    <text x="22" y="174" fill="#374151" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">轮首查上轮空开场或连续静默犯规</text>
+    <text x="22" y="196" fill="#6B7280" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">轮中检测已知文件未写 file:/// 链接并提醒</text>
+
+    <!-- Hook 3 -->
+    <rect x="0" y="220" width="444" height="96" rx="14" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5"/>
+    <rect x="0" y="234" width="4" height="68" rx="2" fill="#10B981"/>
+    <text x="22" y="254" fill="#111827" font-size="19.5" font-weight="700"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">tool-locale</text>
+    <text x="424" y="253" text-anchor="end" fill="#059669" font-size="15.5" font-weight="600"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">PreInvocation</text>
+    <text x="22" y="284" fill="#374151" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">自动识别 9 种非拉丁脚本并支持短回复回溯</text>
+    <text x="22" y="306" fill="#6B7280" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">摘要漂移为纯英文时，同轮最多提醒一次</text>
+  </g>
+
+  <!-- Connectors Col 2 -> Col 3 -->
+  <path d="M 832 136 L 856 136 L 856 352 L 832 352" fill="none" stroke="#94A3B8" stroke-width="1.8"/>
+  <path d="M 832 244 L 856 244" fill="none" stroke="#94A3B8" stroke-width="1.8"/>
+  <path d="M 856 170 L 876 170" fill="none" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow-slate-zh)"/>
+  <path d="M 856 334 L 876 334" fill="none" stroke="#94A3B8" stroke-width="1.8" marker-end="url(#arrow-slate-zh)"/>
+
+  <!-- Column 3: Safety & Telemetry -->
+  <g id="col-safety-zh" transform="translate(884 86)">
+    <!-- Safety Box -->
+    <rect x="0" y="0" width="268" height="168" rx="14" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1.5"/>
+    <text x="20" y="34" fill="#065F46" font-size="19.5" font-weight="700"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">安全边界保障</text>
+    <text x="20" y="68" fill="#1F2937" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">• 永不阻断磁盘写入</text>
+    <text x="20" y="98" fill="#1F2937" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">• 异常或脏数据返回 {}</text>
+    <text x="20" y="128" fill="#1F2937" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">• 跳过子 Agent 会话</text>
+    <text x="20" y="154" fill="#4B5563" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">• 纯 Node.js ESM 零依赖</text>
+
+    <!-- Telemetry Box -->
+    <rect x="0" y="186" width="268" height="130" rx="14" fill="#F9FAFB" stroke="#E5E7EB" stroke-width="1.5"/>
+    <text x="20" y="220" fill="#111827" font-size="18.5" font-weight="700"
+          font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">config/events.jsonl</text>
+    <text x="20" y="252" fill="#374151" font-size="17.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">四项累计触发统计</text>
+    <text x="20" y="280" fill="#6B7280" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">附最近 3 条时间记录</text>
+    <text x="20" y="304" fill="#6B7280" font-size="16.5"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">面板底部支持一键清零</text>
+  </g>
+</svg>
