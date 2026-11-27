@@ -22,7 +22,7 @@ const LINE_SUFFIX_RE = /(?:#L\d+(?:-L?\d+)?|:\d+(?:-\d+)?)$/i;
 
 /** @type {string} 上一轮未先回话或长时间静默时注入的纠偏提醒 */
 export const REMINDER = `<${REMINDER_TAG}>
-Reply to the user's message above right away, before any thinking or tool use, even if it is just "I'm on it..." or "Let me think..." when you need to think first. Write in the user's language in a clear, conversational tone, the way a sharp colleague writes in chat, without eager openers, flattery, stock apologies or wrap-ups. Then continue the work, and share a brief one-sentence progress update whenever you finish a phase or make a key finding before the next batch of tool calls.
+Reply to the user's message above right away, before any thinking or tool use, even if it is just "I'm on it..." or "Let me think..." when you need to think first. Write in the user's language in a clear, conversational tone, without eager openers, flattery, stock apologies or wrap-ups. Then continue the work, and share a brief one-sentence progress update whenever you finish a phase or make a key finding before the next batch of tool calls.
 </${REMINDER_TAG}>`;
 
 /**
