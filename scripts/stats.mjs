@@ -6,6 +6,8 @@ const SCRIPTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = path.resolve(SCRIPTS_DIR, '..');
 const DEFAULT_EVENTS_PATH = path.join(PLUGIN_ROOT, 'config', 'events.jsonl');
 
+export const RECENT_EVENTS_LIMIT = 3;
+
 const EVENT_COUNTER_KEY = Object.freeze({
   write_oversize: 'writeOversizeCount',
   write_reminder: 'writeReminderCount',
@@ -23,7 +25,7 @@ const emptyStats = () => ({
   writeReminderCount: 0,
   responsiveReminderCount: 0,
   toolLocaleReminderCount: 0,
-  lastTriggeredAt: null,
+  recentEvents: [],
 });
 
 /**
@@ -49,9 +51,9 @@ export const recordTriggerEvent = (type, options = {}) => {
 };
 
 /**
- * 读取累计触发统计（超限落盘、写入提醒、响应纠偏、摘要纠偏及最近触发时间）。
+ * 读取累计触发统计（超限落盘、写入提醒、响应纠偏、摘要纠偏及最近 3 条触发记录，按时间倒序）。
  * @param {{ eventsPath?: string }} [options] - 可选事件日志路径覆盖
- * @returns {{ writeOversizeCount: number, writeReminderCount: number, responsiveReminderCount: number, toolLocaleReminderCount: number, lastTriggeredAt: string | null }} 统计结果
+ * @returns {{ writeOversizeCount: number, writeReminderCount: number, responsiveReminderCount: number, toolLocaleReminderCount: number, recentEvents: Array<{ ts: string, type: 'write_oversize' | 'write_reminder' | 'responsive_reminder' | 'tool_locale_reminder' }> }} 统计结果
  */
 export const readTriggerStats = (options = {}) => {
   const eventsPath = resolveEventsPath(options);
@@ -63,6 +65,7 @@ export const readTriggerStats = (options = {}) => {
   }
 
   const stats = emptyStats();
+  const recent = [];
 
   for (const line of raw.split(/\r?\n/)) {
     const trimmed = line.trim();
@@ -84,10 +87,14 @@ export const readTriggerStats = (options = {}) => {
     }
     stats[counterKey] += 1;
     if (typeof entry.ts === 'string' && entry.ts) {
-      stats.lastTriggeredAt = entry.ts;
+      recent.push({ ts: entry.ts, type: entry.type });
+      if (recent.length > RECENT_EVENTS_LIMIT) {
+        recent.shift();
+      }
     }
   }
 
+  stats.recentEvents = recent.reverse();
   return stats;
 };
 

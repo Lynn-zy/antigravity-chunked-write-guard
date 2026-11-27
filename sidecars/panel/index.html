@@ -538,10 +538,70 @@
       cursor: default;
     }
 
+    .recent-triggers {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .recent-triggers[hidden] {
+      display: none;
+    }
+
+    .recent-trigger-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: var(--wg-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .recent-trigger-item.latest {
+      color: color-mix(in srgb, var(--wg-fg) 88%, transparent);
+    }
+
+    .recent-trigger-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: color-mix(in srgb, var(--wg-accent) 70%, transparent);
+    }
+
+    .recent-trigger-item.latest .recent-trigger-dot {
+      background: var(--wg-accent);
+    }
+
+    .recent-trigger-item.empty .recent-trigger-dot {
+      background: color-mix(in srgb, var(--wg-muted) 45%, transparent);
+    }
+
+    .recent-trigger-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .status-row {
       display: flex;
       align-items: center;
       gap: 7px;
+    }
+
+    .status-row[hidden] {
+      display: none;
+    }
+
+    .recent-triggers:not([hidden]) + .status-row {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid color-mix(in srgb, var(--wg-border) 75%, transparent);
     }
 
     .status-dot {
@@ -1054,7 +1114,8 @@
         </div>
         <button id="resetStatsBtn" type="button" class="reset-btn" data-i18n="resetStats" disabled>Reset</button>
       </div>
-      <div class="status-row">
+      <ul id="recentTriggers" class="recent-triggers" aria-live="polite" hidden></ul>
+      <div id="statusRow" class="status-row">
         <span id="statusDot" class="status-dot"></span>
         <span id="statusMsg" class="status-msg" data-i18n="loadingSettings">Loading settings…</span>
       </div>
@@ -1241,7 +1302,13 @@
             },
           },
           noTriggerYet: '暂无触发记录',
-          lastTriggered: (time) => `最近触发：${time}`,
+          eventLabels: {
+            write_oversize: '超限落盘',
+            write_reminder: '写入提醒',
+            responsive_reminder: '响应纠偏',
+            tool_locale_reminder: '摘要纠偏',
+          },
+          recentTriggerEntry: (time, label) => `${time} 触发 ${label}`,
           statsResetDone: '触发统计已清零',
           updateSettingsFail: (msg) => `更新设置失败：${msg}`,
           resetStatsFail: (msg) => `清零失败：${msg}`,
@@ -1391,7 +1458,13 @@
             },
           },
           noTriggerYet: 'No triggers recorded yet',
-          lastTriggered: (time) => `Last triggered: ${time}`,
+          eventLabels: {
+            write_oversize: 'Oversize',
+            write_reminder: 'Write Hint',
+            responsive_reminder: 'Reply Hint',
+            tool_locale_reminder: 'Locale Hint',
+          },
+          recentTriggerEntry: (time, label) => `${time} triggered ${label}`,
           statsResetDone: 'Trigger stats cleared',
           updateSettingsFail: (msg) => `Failed to update settings: ${msg}`,
           resetStatsFail: (msg) => `Failed to reset stats: ${msg}`,
@@ -1478,6 +1551,8 @@
         toolLocaleReminderCount: document.getElementById('toolLocaleReminderCount'),
       };
       const resetStatsBtn = document.getElementById('resetStatsBtn');
+      const recentTriggersEl = document.getElementById('recentTriggers');
+      const statusRowEl = document.getElementById('statusRow');
       const statusDotEl = document.getElementById('statusDot');
       const statusMsgEl = document.getElementById('statusMsg');
 
@@ -1485,6 +1560,7 @@
       let loading = false;
       let activeTab = 'writeGuard';
       let lastPanelState = null;
+      let lastSettingsSnapshot = '';
       let currentSettings = {
         writeGuard: { enabled: true, presetId: '500', hookEnabled: true },
         responsive: { enabled: true, silentThreshold: 6, hookEnabled: true },
@@ -1495,9 +1571,10 @@
         writeReminderCount: 0,
         responsiveReminderCount: 0,
         toolLocaleReminderCount: 0,
-        lastTriggeredAt: null,
+        recentEvents: [],
       };
       let statusKind = '';
+      let statusTimer = null;
       let lastStatusFactory = () => dict().loadingSettings;
 
       const STATIC_I18N_BINDINGS = [
@@ -1577,40 +1654,101 @@
         resetStatsBtn.disabled = busy || totalStats === 0;
       };
 
+      const clearStatus = () => {
+        if (statusTimer !== null) {
+          clearTimeout(statusTimer);
+          statusTimer = null;
+        }
+        statusKind = '';
+        lastStatusFactory = null;
+        statusRowEl.hidden = true;
+      };
+
       const setStatus = (textOrFactory, kind = '') => {
+        if (statusTimer !== null) {
+          clearTimeout(statusTimer);
+          statusTimer = null;
+        }
         statusKind = kind;
         lastStatusFactory = typeof textOrFactory === 'function' ? textOrFactory : () => textOrFactory;
         statusMsgEl.textContent = lastStatusFactory();
         statusMsgEl.className = kind ? `status-msg ${kind}` : 'status-msg';
         statusDotEl.className = kind ? `status-dot ${kind}` : 'status-dot';
+        statusRowEl.hidden = false;
+        if (kind === 'ok') {
+          statusTimer = setTimeout(clearStatus, 3500);
+        }
       };
 
-      const formatTriggerTime = (iso) => {
-        const d = dict();
-        if (!iso) return d.noTriggerYet;
+      const buildSettingsSnapshot = (state) =>
+        JSON.stringify({ version: state?.version ?? '', settings: state?.settings ?? null });
+
+      const formatEventTimestamp = (iso) => {
         const date = new Date(iso);
-        return Number.isNaN(date.getTime())
-          ? d.lastTriggered(iso)
-          : d.lastTriggered(date.toLocaleString(d.locale));
+        if (Number.isNaN(date.getTime())) return String(iso ?? '');
+        if (currentLang === 'zh') {
+          const pad = (n) => String(n).padStart(2, '0');
+          return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+        }
+        return date.toLocaleString(dict().locale);
+      };
+
+      const renderRecentTriggers = () => {
+        const d = dict();
+        recentTriggersEl.hidden = false;
+        recentTriggersEl.replaceChildren();
+        const events = lastStats.recentEvents;
+
+        if (events.length === 0) {
+          const li = document.createElement('li');
+          li.className = 'recent-trigger-item empty';
+          const dot = document.createElement('span');
+          dot.className = 'recent-trigger-dot';
+          const text = document.createElement('span');
+          text.className = 'recent-trigger-text';
+          text.textContent = d.noTriggerYet;
+          li.append(dot, text);
+          recentTriggersEl.appendChild(li);
+          return;
+        }
+
+        for (let i = 0; i < events.length; i += 1) {
+          const item = events[i];
+          const li = document.createElement('li');
+          li.className = i === 0 ? 'recent-trigger-item latest' : 'recent-trigger-item';
+          const dot = document.createElement('span');
+          dot.className = 'recent-trigger-dot';
+          const text = document.createElement('span');
+          text.className = 'recent-trigger-text';
+          const label = d.eventLabels[item.type] || item.type;
+          text.textContent = d.recentTriggerEntry(formatEventTimestamp(item.ts), label);
+          li.append(dot, text);
+          recentTriggersEl.appendChild(li);
+        }
       };
 
       const renderStats = (stats) => {
+        const rawRecent = Array.isArray(stats?.recentEvents) ? stats.recentEvents : [];
         lastStats = {
           writeOversizeCount: Number(stats?.writeOversizeCount ?? 0),
           writeReminderCount: Number(stats?.writeReminderCount ?? 0),
           responsiveReminderCount: Number(stats?.responsiveReminderCount ?? 0),
           toolLocaleReminderCount: Number(stats?.toolLocaleReminderCount ?? 0),
-          lastTriggeredAt: stats?.lastTriggeredAt ?? null,
+          recentEvents: rawRecent.filter(
+            (item) => item && typeof item.ts === 'string' && typeof item.type === 'string',
+          ),
         };
         for (const [key, el] of Object.entries(statEls)) {
           const val = lastStats[key];
           el.textContent = String(val);
           el.className = val > 0 ? 'stat-num nonzero' : 'stat-num';
         }
+        renderRecentTriggers();
       };
 
       const render = (state) => {
         lastPanelState = state;
+        lastSettingsSnapshot = buildSettingsSnapshot(state);
         currentSettings = state.settings;
         const d = dict();
         const { writeGuard, responsive, toolLocale } = currentSettings;
@@ -1767,12 +1905,28 @@
         if (loading) return;
         loading = true;
         try {
-          const res = await apiFetch('/api/state', { method: 'GET' });
+          const res = await apiFetch('/api/state', { method: 'GET', cache: 'no-store' });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const state = await res.json();
-          render(state);
-          if (!silent || statusKind === '') {
-            setStatus(() => formatTriggerTime(lastStats.lastTriggeredAt), '');
+          const prevRecentSig = JSON.stringify(lastStats.recentEvents);
+          const nextSettingsSnapshot = buildSettingsSnapshot(state);
+          if (!silent || !lastPanelState || nextSettingsSnapshot !== lastSettingsSnapshot) {
+            render(state);
+          } else {
+            lastPanelState = state;
+            renderStats(state.stats);
+            syncInteractiveState();
+          }
+          const nextRecentSig = JSON.stringify(lastStats.recentEvents);
+          if (!silent || statusKind === 'err') {
+            clearStatus();
+          } else if (
+            statusKind === 'ok' &&
+            nextRecentSig !== prevRecentSig &&
+            lastStats.recentEvents.length > 0
+          ) {
+            // 新触发事件到达时立即收起残留的「已清零」等临时提示
+            clearStatus();
           }
         } catch (err) {
           if (!silent) {
@@ -2208,7 +2362,9 @@
         if (lastPanelState) {
           render(lastPanelState);
         }
-        statusMsgEl.textContent = lastStatusFactory();
+        if (lastStatusFactory && !statusRowEl.hidden) {
+          statusMsgEl.textContent = lastStatusFactory();
+        }
         if (updateDialog.open) {
           renderUpdateState(updateState);
         }
@@ -2267,7 +2423,7 @@
         }
       });
 
-      // 切回面板时自动拉取最新统计（短节流避免 focus 与 visibilitychange 连发两次请求）
+      // 切回面板或面板可见期间自动拉取最新统计（短节流避免 focus 与 visibilitychange 连发两次请求）
       let lastAutoRefreshAt = 0;
       const refreshOnReturn = () => {
         const now = Date.now();
@@ -2279,6 +2435,19 @@
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') refreshOnReturn();
       });
+
+      const STATS_POLL_MS = 3000;
+      setInterval(() => {
+        if (
+          document.visibilityState !== 'visible' ||
+          busy ||
+          loading ||
+          reloadPollTimer !== null
+        ) {
+          return;
+        }
+        loadState(true);
+      }, STATS_POLL_MS);
 
       applyStaticTranslations();
       loadState();

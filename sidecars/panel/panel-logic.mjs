@@ -124,7 +124,7 @@ export const handleResetStats = (options = {}) => {
     current.writeReminderCount === 0 &&
     current.responsiveReminderCount === 0 &&
     current.toolLocaleReminderCount === 0 &&
-    current.lastTriggeredAt === null
+    current.recentEvents.length === 0
   ) {
     return {
       ok: true,

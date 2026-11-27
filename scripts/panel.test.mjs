@@ -129,7 +129,7 @@ test('renderAgentsRule includes all three sections by default and omits oversize
   assert.doesNotMatch(noWriteHook, /Oversize detection & post-write reminder/);
 });
 
-test('stats records all four event types, skips corrupted lines, and resets cleanly', () => {
+test('stats records all four event types, keeps latest 3 recent events newest-first, skips corrupted lines, and resets cleanly', () => {
   const ws = createTempWorkspace();
   try {
     assert.deepEqual(readTriggerStats({ eventsPath: ws.eventsPath }), {
@@ -137,7 +137,7 @@ test('stats records all four event types, skips corrupted lines, and resets clea
       writeReminderCount: 0,
       responsiveReminderCount: 0,
       toolLocaleReminderCount: 0,
-      lastTriggeredAt: null,
+      recentEvents: [],
     });
 
     assert.equal(recordTriggerEvent('invalid', { eventsPath: ws.eventsPath }), false);
@@ -152,12 +152,17 @@ test('stats records all four event types, skips corrupted lines, and resets clea
       writeReminderCount: 1,
       responsiveReminderCount: 1,
       toolLocaleReminderCount: 1,
-      lastTriggeredAt: '2026-11-26T10:03:00Z',
+      recentEvents: [
+        { ts: '2026-11-26T10:03:00Z', type: 'tool_locale_reminder' },
+        { ts: '2026-11-26T10:02:00Z', type: 'responsive_reminder' },
+        { ts: '2026-11-26T10:01:00Z', type: 'write_reminder' },
+      ],
     });
 
     const resetOnce = handleResetStats({ configPath: ws.configPath, eventsPath: ws.eventsPath });
     assert.equal(resetOnce.changed, true);
     assert.equal(resetOnce.state.stats.toolLocaleReminderCount, 0);
+    assert.deepEqual(resetOnce.state.stats.recentEvents, []);
 
     const resetAgain = handleResetStats({ configPath: ws.configPath, eventsPath: ws.eventsPath });
     assert.equal(resetAgain.changed, false);
