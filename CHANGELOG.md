@@ -1,16 +1,21 @@
 # Changelog
 
-## [3.0.0] - 2026-11-26
+## [3.0.0] - 2026-11-27
 
 ### Added
 - 合并 `responsive-mode` 与 `tool-locale` 能力，整体升级为三合一护栏插件 **Antigravity Rail**（插件 ID：`antigravity-rail`）。
-- 新增「先回话与途中汇报」模块（`responsive-mode`）：支持 `4 / 6 / 10` 次三档中途静默阈值、模块总开关与轮间纠偏 Hook 开关。
-- 新增「工具摘要中文短语」模块（`tool-locale`）：覆盖 `update_steps` 步骤标题、`update_focus` 与 `toolSummary`，支持模块总开关与同轮立即纠偏 Hook 开关（每用户轮次最多一次，允许中英混排技术短语）。
-- 侧边栏面板升级为三标签布局（「分段写入 / 响应汇报 / 摘要中文」），每个模块提供独立的模块总开关（关闭时自动从 `rules/AGENTS.md` 移除对应章节）与 Hook 开关，底部统一展示四项累计触发统计（超限落盘、写入提醒、响应纠偏、摘要纠偏）。
+- 新增「先回话与途中汇报」模块（`responsive-mode`）：支持 `4 / 6 / 10` 次三档中途静默阈值、模块总开关、轮间节奏纠偏 Hook 与同轮已知工作区文件可点击链接（`file:///`）纠偏。
+- 新增「工具摘要语言匹配」模块（`tool-locale`）：覆盖 `update_steps` 步骤标题（`title`）、`update_focus` 状态（`focus`）与 `run_command` 摘要（`toolSummary`），自动识别 9 种非拉丁文字脚本并支持纯拉丁短回复回溯，提供同轮立即纠偏 Hook（每用户轮次最多一次，允许混排 `npm test` 等技术标识）。
+- 侧边栏面板升级为中英双语三标签布局（「分段写入 / 响应汇报 / 摘要语言」），每个模块提供独立的模块总开关（关闭时自动从 `rules/AGENTS.md` 移除对应章节）与 Hook 开关；底部统一展示四项累计触发统计（超限落盘、写入提醒、响应纠偏、摘要纠偏）及最近 3 条带时间戳触发记录，支持一键清零。
+- 安装与卸载脚本（`scripts/install.ps1`、`scripts/install.sh`）支持通过 `config/sidecar.pid` 在升级或卸载时自动重启/停止运行中的侧边栏 Sidecar 进程。
 
 ### Changed
 - 统一配置持久化至 `config/settings.json`（`scripts/config.mjs`），Hook 入口拆分为 `write-guard-hook.mjs`、`responsive-hook.mjs`、`tool-locale-hook.mjs` 并共享 `scripts/transcript.mjs`。
 - 面板接口收口为 `POST /api/settings`，更新器与安装脚本同步切换至 `antigravity-rail` 并在安装前清理旧 `.mjs` 脚本残留。
+- 重写中英文 README，补充安装前后实拍对比、暗黑/明亮双模式真实侧边栏面板截图与 Mermaid 架构图。
+
+### Fixed
+- 修复面板点击「清零」后触发状态未及时刷新的问题，并确保新事件到达时自动收起残留提示。
 
 ## [2.0.2] - 2026-11-24
 
