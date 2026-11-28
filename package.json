@@ -1,6 +1,6 @@
 {
   "name": "antigravity-rail",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Unified Antigravity agent guardrails with live side-pane controls for chunked writes, responsive replies, and user-language tool summaries.",
   "type": "module",
   "license": "MIT",
