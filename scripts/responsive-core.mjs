@@ -36,7 +36,7 @@ export const buildFileLinkReminder = (files) => {
     .map((name) => `\`${name}\``)
     .join(', ');
   return `<${FILE_LINK_REMINDER_TAG}>
-A recent reply referenced workspace files in plain backticks (${examples}) instead of clickable links. Format real files as \`[filename](file:///absolute/path)\` (forward slashes on Windows) in subsequent progress updates and summaries.
+A recent reply mentioned ${examples} in plain backticks. If these refer to real local/workspace files, format them as clickable links \`[filename](file:///absolute/path)\` (forward slashes on Windows) in subsequent progress updates and summaries; ignore this reminder if they refer to remote, external, or generic filenames.
 </${FILE_LINK_REMINDER_TAG}>`;
 };
 

@@ -255,6 +255,9 @@ test('同轮检测已知工作区文件使用纯反引号时立即提醒改用�
     assert.deepEqual(reminded, { injectSteps: [{ systemMessage: { systemMessage: expectedMsg } }] });
     assert.match(expectedMsg, /<responsive-file-links>/);
     assert.match(expectedMsg, /`config\.mjs`, `sidecars\/panel\/updater\.mjs`/);
+    assert.doesNotMatch(expectedMsg, /[\u4e00-\u9fff]/);
+    assert.match(expectedMsg, /local\/workspace files/i);
+    assert.match(expectedMsg, /ignore this reminder.*remote/i);
 
     // 2. 同轮已经提醒过一次后不再重复注入
     const dedup = ws.writeTranscript([
